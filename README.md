@@ -57,6 +57,8 @@ Movement keys can be remapped in **Settings → Controls**.
 
 **Accessibility:** a colour-blind mode (patterns and outlines on police vision cones and hazards), Easy mode (slower detection and an extra life), screen shake on/off, and music and sound-effect volume.
 
+**Starting over:** choose **New Game** on the title screen to clear your progress and start Level 1 (**Continue** picks up where you left off), or open the game with `?reset=1` (<https://maryamaarif.github.io/hill-sttaion-hideout/?reset=1>). Your settings are kept either way.
+
 **For judges:** add `?demo=1` to the URL (<https://maryamaarif.github.io/hill-sttaion-hideout/?demo=1>) to start with 600 coins, then choose **Your room** on the title screen to try the shop.
 
 ## Run locally

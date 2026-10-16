@@ -54,10 +54,16 @@ export default class MenuScene extends Phaser.Scene {
     this.add.text(col, 168, 'Stay out of sight through four seasons.', textStyle(18, { color: '#fff6e8' })).setOrigin(0.5).setDepth(DEPTH.hud);
 
     this.settingsPanel = new SettingsPanel(this);
-    const options = [
-      { label: level > 1 ? `Play (Level ${level})` : 'Play', action: () => this.scene.start('GameScene', newLevelRunFromSave(level, this.time.now)) },
-    ];
-    if (save.coins > 0 || level > 1) options.push({ label: 'Your room', action: () => this.scene.start('HubScene') });
+    // Continue (saved progress) and New Game (clears progress, starts Level 1).
+    const progress = SaveSystem.hasProgress(save);
+    const options = [];
+    if (progress) {
+      options.push({ label: `Continue (Level ${level})`, action: () => this.scene.start('GameScene', newLevelRunFromSave(level, this.time.now)) });
+      options.push({ label: 'New Game', keepOpen: true, action: () => this.confirmNewGame() });
+      options.push({ label: 'Your room', action: () => this.scene.start('HubScene') });
+    } else {
+      options.push({ label: 'New Game', action: () => this.startNewGame() });
+    }
     options.push({ label: 'Settings', keepOpen: true, action: () => this.settingsPanel.open() });
     options.push({ label: 'Credits', keepOpen: true, action: () => this.showCredits() });
     const buttons = createMenu(this, col, 238, options, 58);
@@ -79,6 +85,49 @@ export default class MenuScene extends Phaser.Scene {
     from.particles.stop();
     to.particles.start();
     this.seasonLabel.setText(to.name);
+  }
+
+  // Clear progress and start Level 1 from Spring.
+  startNewGame() {
+    SaveSystem.resetProgress();
+    this.scene.start('GameScene', newLevelRunFromSave(1, this.time.now));
+  }
+
+  // New Game over saved progress asks first, so a stray ENTER can't wipe a save.
+  confirmNewGame() {
+    const { width: W, height: H } = this.scale;
+    const objs = [];
+    const add = (o) => {
+      objs.push(o.setDepth(DEPTH.hud + 10));
+      return o;
+    };
+    const ink = (size, bold = false) => ({ fontFamily: UI.font, fontSize: `${size}px`, color: '#3b2a20', fontStyle: bold ? '800' : '600', align: 'center' });
+    add(this.add.rectangle(0, 0, W, H, 0x1d2b3a, 0.65).setOrigin(0).setInteractive());
+    add(addPanel(this, W / 2, H / 2, 480, 230, 'paper'));
+    add(this.add.text(W / 2, H / 2 - 70, 'Start a new game?', textStyle(28)).setOrigin(0.5));
+    add(this.add.text(W / 2, H / 2 - 18, 'Your level, coins, room, items and outfits\nwill be cleared. Settings are kept.', { ...ink(16), lineSpacing: 4 }).setOrigin(0.5));
+    const button = (x, label, hot, onClick) => {
+      const bg = add(setHot(addPanel(this, x, H / 2 + 50, 190, 44, 'plank'), hot));
+      add(this.add.text(x, H / 2 + 48, label, ink(18, true)).setOrigin(0.5));
+      bg.setInteractive({ useHandCursor: true }).on('pointerdown', onClick);
+    };
+    this.confirmOpen = true;
+    const close = () => {
+      this.input.keyboard.off('keydown', onKey);
+      objs.forEach((o) => o.destroy());
+      this.time.delayedCall(150, () => (this.confirmOpen = false));
+    };
+    const yes = () => {
+      close();
+      this.startNewGame();
+    };
+    const onKey = (e) => {
+      if (e.code === 'Enter') yes();
+      else if (e.code === 'Escape' || e.code === 'Backspace') close();
+    };
+    button(W / 2 - 102, 'Start over (ENTER)', true, yes);
+    button(W / 2 + 102, 'Cancel (ESC)', false, close);
+    this.time.delayedCall(150, () => this.input.keyboard.on('keydown', onKey));
   }
 
   showCredits() {
@@ -115,6 +164,6 @@ export default class MenuScene extends Phaser.Scene {
 
   // createMenu asks this before handling keys or clicks.
   isMenuBlocked() {
-    return this.settingsPanel.blocking || this.creditsOpen;
+    return this.settingsPanel.blocking || this.creditsOpen || this.confirmOpen;
   }
 }

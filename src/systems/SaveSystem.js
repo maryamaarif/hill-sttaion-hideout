@@ -69,6 +69,21 @@ export default class SaveSystem {
     }
   }
 
+  // Anything worth continuing: a level reached, coins, or anything bought.
+  static hasProgress(data = SaveSystem.load()) {
+    return data.highestLevel > 1 || data.coins > 0
+      || ['upgrades', 'items', 'hidingPlaces', 'ownedOutfits'].some((k) => data[k].length > 0);
+  }
+
+  // New game: clear all progress (level, coins, room, items, hiding places,
+  // outfits) but keep the player's settings (volumes, controls, accessibility).
+  static resetProgress() {
+    const fresh = defaults();
+    fresh.settings = SaveSystem.load().settings;
+    SaveSystem.save(fresh);
+    return fresh;
+  }
+
   // Load, change, save in one step. Returns the saved data.
   static update(change) {
     const data = SaveSystem.load();

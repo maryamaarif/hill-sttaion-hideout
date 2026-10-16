@@ -17,6 +17,7 @@ This file is the source of truth for the game design and code conventions. Every
 ## Judging and deployment
 - **Live build**: GitHub Pages from `main` (root) at <https://maryamaarif.github.io/hill-sttaion-hideout/>. `.nojekyll` keeps Pages from processing files. Every path is relative and every import matches its file name's case exactly (Pages is case-sensitive, macOS is not).
 - **`?demo=1`** (hidden): tops coins up to `DEMO.coins` at boot so judges can try the shop ("Your room" on the title screen).
+- **`?reset=1`**: clears saved progress at boot (`SaveSystem.resetProgress`, settings kept) and removes itself from the URL so a refresh doesn't wipe again. Combine with demo: `?reset=1&demo=1`.
 - **Credits**: `CREDITS.md` and the in-game Credits screen (`src/config/credits.js`) list all third-party software (Phaser 3.80.1, MIT, via jsDelivr; Lora and Nunito from Google Fonts, SIL OFL 1.1; system emoji). Keep both in step when adding anything third-party. All art and audio are made in code by the team.
 - Level 1 target: about 4–6 minutes for a first-time player, no dead ends: every failure respawns at the hurdle start, and moving platforms and trains reset with it.
 
@@ -194,7 +195,7 @@ Each new level increases police count, patrol speed, vision cone length and dete
 - Key icons (`src/ui/KeyIcons.js`) always show the player's current key, never a hard-coded one.
 
 ### First minute (Spring teaches without words)
-- The title screen shows the guest house on its hill with the seasons cycling behind it; buttons: Play, Settings, Credits (+ Your room once there is progress). Credits text: `src/config/credits.js`.
+- The title screen shows the guest house on its hill with the seasons cycling behind it. Buttons: **New Game**, Settings, Credits; once there is saved progress (`SaveSystem.hasProgress`): **Continue (Level N)**, New Game (asks to confirm, then clears progress but keeps settings, and starts Level 1), Your room, Settings, Credits. Credits text: `src/config/credits.js`.
 - Spring (`tutorial: true`) has **no instruction sentences**: no signs, no hint lines in banners. The first screen teaches by layout, with only key icons next to the action (`layout.keyHints`), which fade once used: walk (← →), jump a small log (jump key), a bush (hide key) right before the first officer turns and sweeps his cone over it, then Hurdle 1.
 - Hiding-spot prompts everywhere are a key icon, not words.
 
