@@ -1,6 +1,6 @@
 import { addScreenText, onKey } from './ui.js';
 import { SEASON_ORDER } from '../seasons/index.js';
-import { CAMERA, DEPTH, LIVES, PLAYER, RESPAWN } from '../config/game.js';
+import { CAMERA, DEPTH, EASY, LIVES, PLAYER, RESPAWN } from '../config/game.js';
 import { buildBackdrop } from '../art/Backdrop.js';
 import buildLevel from '../systems/LevelBuilder.js';
 import HurdleSystem from '../systems/HurdleSystem.js';
@@ -20,7 +20,9 @@ import SlopeSystem from '../systems/SlopeSystem.js';
 import BlizzardSystem from '../systems/BlizzardSystem.js';
 import FootprintSystem from '../systems/FootprintSystem.js';
 import Hud, { textStyle } from '../ui/Hud.js';
-import SettingsPanel from '../ui/SettingsPanel.js';
+import PauseMenu from '../ui/PauseMenu.js';
+import Settings from '../systems/Settings.js';
+import { applyEffects } from '../systems/Effects.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
 // One shared engine for every season. The season config + layout decide
@@ -38,7 +40,11 @@ export default class GameScene extends Phaser.Scene {
     // hiding places.
     const tuned = DifficultySystem.tuneSeason(SEASON_ORDER[data.seasonIndex], data.level);
     const perked = PerkSystem.apply(tuned, data.perks);
-    this.season = ShopSystem.apply(perked, data.items, data.hidingPlaces);
+    const shopped = ShopSystem.apply(perked, data.items, data.hidingPlaces);
+    // Easy mode (Settings): police take longer to spot you.
+    this.season = Settings.current.easy
+      ? applyEffects(shopped, [{ path: 'police.detectionTime', mul: EASY.detectionMultiplier }])
+      : shopped;
     this.player = null;
     if (!this.season.layout) {
       this.createPlaceholder();
@@ -149,12 +155,33 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('police-alarm', () => this.audio.play('alert'));
     this.audio.playMusic(this.season.music ?? this.season.key);
 
-    // ESC pauses the game and opens the settings.
+    // ESC or P: pause menu (Resume, Restart season, Settings, Quit to menu).
     this.paused = false;
-    this.settingsPanel = new SettingsPanel(this, { title: 'Paused', onClose: () => this.setPaused(false) });
-    this.input.keyboard.on('keydown-ESC', () => {
-      if (!this.settingsPanel.blocking && this.state === 'playing') this.setPaused(true);
+    this.pauseMenu = new PauseMenu(this, {
+      onResume: () => this.setPaused(false),
+      onRestart: () => this.leave(() => this.scene.restart(this.run)),
+      onQuit: () => this.leave(() => this.scene.start('MenuScene')),
     });
+    const pause = () => {
+      if (!this.pauseMenu.blocking && this.state === 'playing') this.setPaused(true);
+    };
+    this.input.keyboard.on('keydown-ESC', pause);
+    this.input.keyboard.on('keydown-P', pause);
+
+    // Settings can change mid-game (from the pause menu): controls, colour-blind mode.
+    this.onSettings = () => {
+      this.player.bindKeys();
+      this.level.colorBlindOverlay.setVisible(Settings.current.colorBlind);
+    };
+    Settings.events.on('changed', this.onSettings);
+    this.events.once('shutdown', () => Settings.events.off('changed', this.onSettings));
+    this.level.colorBlindOverlay.setVisible(Settings.current.colorBlind);
+
+    // Key icons fade once the action has been used (Spring teaches with icons only).
+    this.keyHints = this.level.keyHints;
+    const used = (action) => this.fadeKeyHints(action);
+    this.events.on('player-jump', () => used('jump'));
+    this.events.on('player-hide', () => used('hide'));
     this.events.on('player-out-of-breath', (p) => {
       this.audio.play('gasp');
       this.hud.popup(p.x, p.y - 40, 'Out of breath!', '#bfeaff');
@@ -165,8 +192,30 @@ export default class GameScene extends Phaser.Scene {
     cam.startFollow(this.player, false, CAMERA.lerp, CAMERA.lerp);
     cam.fadeIn(400);
 
-    this.hud.showBanner(this.season.name, `Reach the ${layout.goal.label}. Stay out of sight.`);
+    // The tutorial season shows only the name: no instruction sentences.
+    this.hud.showBanner(this.season.name, this.season.tutorial ? '' : `Reach the ${layout.goal.label}. Stay out of sight.`);
     if (ShopSystem.hasMap(data.items)) this.showPoliceRoutes();
+  }
+
+  fadeKeyHints(action) {
+    for (const hint of this.keyHints) {
+      if (hint.done || !hint.actions.includes(action)) continue;
+      hint.done = true;
+      this.tweens.killTweensOf(hint.icon);
+      this.tweens.add({ targets: hint.icon, alpha: 0, y: hint.icon.y - 16, duration: 500, delay: 300 });
+    }
+  }
+
+  // Screen shake, unless turned off in Settings.
+  shake(duration, intensity) {
+    if (Settings.current.shake) this.cameras.main.shake(duration, intensity);
+  }
+
+  // Unpause everything (the animation manager is shared by all scenes) before leaving.
+  leave(go) {
+    this.pauseMenu.close(false);
+    this.setPaused(false);
+    go();
   }
 
   setPaused(paused) {
@@ -176,7 +225,7 @@ export default class GameScene extends Phaser.Scene {
       this.tweens.pauseAll();
       this.anims.pauseAll();
       this.time.paused = true;
-      this.settingsPanel.open();
+      this.pauseMenu.open();
     } else {
       this.physics.world.resume();
       this.tweens.resumeAll();
@@ -189,6 +238,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.player || this.paused) return;
     const dt = delta / 1000;
     const player = this.player;
+    if (Math.abs(player.x - this.season.layout.spawn.x) > 60) this.fadeKeyHints('left');
     const playing = this.state === 'playing';
 
     // Moving platforms: carry whoever is standing on one.
@@ -336,7 +386,7 @@ export default class GameScene extends Phaser.Scene {
     this.audio.play(sound);
     this.player.freeze();
     this.player.setVisible(false);
-    this.cameras.main.shake(200, 0.006);
+    this.shake(200, 0.006);
     this.cameras.main.flash(250, 255, 170, 170);
 
     if (this.lives.isGameOver()) {

@@ -1,6 +1,6 @@
 import { AUDIO, SFX } from '../config/audio.js';
 import { TRACKS } from '../config/music.js';
-import SaveSystem from './SaveSystem.js';
+import Settings from './Settings.js';
 
 // All sound is synthesised with Web Audio (no audio files):
 //   sound effects  recipes in src/config/audio.js
@@ -64,7 +64,7 @@ const audio = {
     this.musicGain.connect(this.master);
     this.sfxGain = ctx.createGain();
     this.sfxGain.connect(this.master);
-    this.applySettings(SaveSystem.load().settings);
+    this.applySettings(Settings.current);
     window.__audio = this; // for debugging and automated playtests, like window.__game
 
     // M mutes everywhere (ignoring held-key repeats).
@@ -87,24 +87,23 @@ const audio = {
 
   setVolume(kind, value) {
     const v = Math.round(Math.min(1, Math.max(0, value)) * 10) / 10;
-    const save = SaveSystem.update((d) => {
-      d.settings[kind === 'music' ? 'musicVolume' : 'sfxVolume'] = v;
-    });
-    this.applySettings(save.settings);
+    this.applySettings(Settings.update((s) => {
+      s[kind === 'music' ? 'musicVolume' : 'sfxVolume'] = v;
+    }));
     return v;
   },
 
   toggleMute() {
-    const save = SaveSystem.update((d) => {
-      d.settings.muted = !d.settings.muted;
+    const s = Settings.update((st) => {
+      st.muted = !st.muted;
     });
-    this.applySettings(save.settings);
-    this.showToast(save.settings.muted ? '🔇 Sound off (M)' : '🔊 Sound on (M)');
-    return save.settings.muted;
+    this.applySettings(s);
+    this.showToast(s.muted ? '🔇 Sound off (M)' : '🔊 Sound on (M)');
+    return s.muted;
   },
 
   get muted() {
-    return SaveSystem.load().settings.muted;
+    return Settings.current.muted;
   },
 
   showToast(text) {

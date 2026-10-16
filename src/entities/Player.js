@@ -1,5 +1,6 @@
 import { PLAYER, DEPTH, RESPAWN } from '../config/game.js';
 import { PLAYER_FRAME } from '../art/TextureFactory.js';
+import Settings from '../systems/Settings.js';
 
 const moveTowards = (value, target, maxDelta) =>
   Math.abs(target - value) <= maxDelta ? target : value + Math.sign(target - value) * maxDelta;
@@ -33,10 +34,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.maxVelocity.set(10000, PLAYER.maxFallSpeed);
     this.setStandingBody(true);
 
-    this.keys = scene.input.keyboard.addKeys({
-      left: 'LEFT', right: 'RIGHT', up: 'UP', down: 'DOWN',
-      a: 'A', d: 'D', w: 'W', s: 'S', space: 'SPACE',
-    });
+    this.bindKeys();
 
     this.lastGroundedAt = -Infinity;
     this.jumpPressedAt = -Infinity;
@@ -59,6 +57,24 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.graceUntil = 0;
     this.frozen = false;
     this.lockedUntil = 0;
+  }
+
+  // Keys come from the (remappable) controls in Settings: { action: [Key, ...] }.
+  bindKeys() {
+    const kb = this.scene.input.keyboard;
+    this.keys = {};
+    for (const [action, names] of Object.entries(Settings.current.controls)) {
+      this.keys[action] = names.map((n) => kb.addKey(n));
+    }
+  }
+
+  isDown(action) {
+    return this.keys[action]?.some((k) => k.isDown);
+  }
+
+  justDown(action) {
+    // Check every key (JustDown clears its flag), then combine.
+    return (this.keys[action] ?? []).map((k) => Phaser.Input.Keyboard.JustDown(k)).some(Boolean);
   }
 
   setStandingBody(standing) {
@@ -87,14 +103,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     const dt = delta / 1000;
-    const k = this.keys;
-    const JustDown = Phaser.Input.Keyboard.JustDown;
     const locked = time < this.lockedUntil;
-    const left = !locked && (k.left.isDown || k.a.isDown);
-    const right = !locked && (k.right.isDown || k.d.isDown);
-    const down = !locked && (k.down.isDown || k.s.isDown);
-    const jumpHeld = k.up.isDown || k.w.isDown || k.space.isDown;
-    const jumpPressed = !locked && (JustDown(k.up) || JustDown(k.w) || JustDown(k.space));
+    const left = !locked && this.isDown('left');
+    const right = !locked && this.isDown('right');
+    const down = !locked && this.isDown('hide');
+    const jumpHeld = this.isDown('jump');
+    const jumpPressed = this.justDown('jump') && !locked;
     const grounded = this.onGround;
     const dir = (right ? 1 : 0) - (left ? 1 : 0);
 

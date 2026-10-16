@@ -1,4 +1,5 @@
 import { DEPTH, POLICE, UI } from '../config/game.js';
+import Settings from '../systems/Settings.js';
 
 const DEG = Math.PI / 180;
 
@@ -271,7 +272,16 @@ export default class Police {
     this.cone.clear();
     this.cone.fillStyle(color, POLICE.coneAlpha + this.detection * 0.15).fillPoints(points, true);
     const edge = lerpColor(this.settings.coneEdgeColor ?? POLICE.coneEdgeColor, POLICE.alertColor, this.detection);
-    this.cone.lineStyle(2, edge, 0.7).strokePoints(points, true);
+    if (Settings.current.colorBlind) {
+      // Pattern as well as colour: a fan of ray lines and a thick dark edge; when
+      // the officer is alarmed the rays double up.
+      const every = this.detection >= POLICE.alarmAt ? 1 : 2;
+      this.cone.lineStyle(2, 0x3b2a20, 0.45);
+      for (let i = 1; i < points.length; i += every) this.cone.lineBetween(eye.x, eye.y, points[i].x, points[i].y);
+      this.cone.lineStyle(4, 0x3b2a20, 0.9).strokePoints(points, true);
+    } else {
+      this.cone.lineStyle(2, edge, 0.7).strokePoints(points, true);
+    }
 
     // Detection meter: "?" while suspicious, "!" once alarmed. A lone "?" while
     // following footprints.

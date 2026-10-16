@@ -22,11 +22,17 @@ Then open <http://localhost:8000>.
 | Key | Action |
 |---|---|
 | ← → / A D | Move (on skis: faster / slower) |
-| ↑ / W / Space | Jump (hold after a ski jump to glide) |
-| ↓ / S | Hide in a bush, flower bed, overhang or reeds (move or jump to leave); hold to dive when swimming |
-| Enter | Confirm on menus |
-| Esc | Pause and settings (music / sound effect volume) |
+| Space / ↑ / W | Jump (hold after a ski jump to glide) |
+| ↓ / S | Hide in a bush, flower bed, overhang, reeds… (move or jump to leave); hold to dive when swimming |
+| Esc / P | Pause: Resume, Restart season, Settings, Quit to menu |
 | M | Mute or unmute, anywhere |
+| Enter | Confirm on menus |
+
+All movement keys can be remapped in **Settings → Controls**.
+
+### Accessibility
+
+Settings has a **colour-blind mode** (patterns and outlines on police vision cones and hazards), an **Easy mode** (slower detection and an extra life), **screen shake** on/off, music and sound-effect volume, and remappable controls.
 
 ### What's playable
 

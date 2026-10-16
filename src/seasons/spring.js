@@ -1,8 +1,10 @@
 import layout from './layouts/spring.js';
 
-// Spring: chill tutorial. Few police, slow patrols, normal footing.
+// Spring: chill tutorial. Few police, slow patrols, normal footing. It teaches
+// without written instructions (tutorial: no hint sentences, only key icons).
 export default {
   key: 'spring',
+  tutorial: true,
   name: 'Spring',
   tagline: 'A calm walk through the blossoms',
   layout,
@@ -11,9 +13,9 @@ export default {
   police: { patrolSpeed: 50, visionLength: 170, visionAngleDeg: 40, detectionTime: 2.0, pauseMs: 1500 },
   hidingSpots: ['bush', 'flowers'],
   hurdles: [
-    { key: 'meadow', name: 'Meadow Walk', hint: 'Walk and jump the fences' },
-    { key: 'stepping-stones', name: 'Stepping Stones', hint: 'Falling in the stream costs a life' },
-    { key: 'flower-garden', name: 'Flower Garden', hint: 'Someone is watching the garden…' },
+    { key: 'meadow', name: 'Meadow Walk' },
+    { key: 'stepping-stones', name: 'Stepping Stones' },
+    { key: 'flower-garden', name: 'Flower Garden' },
   ],
   ambient: {
     texture: 'petal',

@@ -33,8 +33,9 @@ export function createMenu(scene, x, y, items, spacing = 64) {
     return { bg, label };
   });
 
-  // A settings overlay (scene.settingsPanel) takes the keys while it is open.
-  const blocked = () => scene.settingsPanel?.blocking;
+  // An overlay (settings, credits) takes the keys while it is open: the scene can
+  // say so with isMenuBlocked(), or just have a scene.settingsPanel.
+  const blocked = () => scene.isMenuBlocked?.() ?? scene.settingsPanel?.blocking;
 
   function select(i) {
     if (blocked()) return;

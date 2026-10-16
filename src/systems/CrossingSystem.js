@@ -99,7 +99,7 @@ export default class CrossingSystem {
           c.steam.start();
           if (onScreen) {
             this.audio.play('rumble');
-            this.scene.cameras.main.shake(c.def.passMs, 0.002);
+            this.scene.shake?.(c.def.passMs, 0.002);
           }
         }
         if (c.state === 'passing') {
@@ -125,6 +125,18 @@ export default class CrossingSystem {
     const color = state === 'idle' ? 0x4cd964 : state === 'passing' || flash ? 0xff3b30 : 0x5a1a16;
     const y = this.groundY - 69;
     c.lamp.clear();
+    // Barrier arm: up when clear, down across the track when a train is due
+    // (a shape cue as well as the lamp colour).
+    const armY = this.groundY - 46;
+    if (state === 'idle') {
+      c.lamp.fillStyle(0xffffff).fillRect(c.lampX - 2, armY - 60, 6, 60);
+    } else {
+      const w = c.def.w + 18;
+      c.lamp.fillStyle(0xffffff).fillRect(c.lampX, armY - 3, w, 7);
+      c.lamp.fillStyle(0xd94f4a);
+      for (let x = c.lampX + 6; x < c.lampX + w; x += 22) c.lamp.fillRect(x, armY - 3, 11, 7);
+      c.lamp.lineStyle(2, 0x3b2a20).strokeRect(c.lampX, armY - 3, w, 7);
+    }
     c.lamp.fillStyle(color).fillCircle(c.lampX, y, 6);
     if (color !== 0x5a1a16) c.lamp.fillStyle(color, 0.3).fillCircle(c.lampX, y, 12);
   }

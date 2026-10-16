@@ -58,6 +58,7 @@ function drawPine(g, x, baseY, size, color) {
   g.fillStyle(color).fillTriangle(x - size * 0.35, baseY, x + size * 0.35, baseY, x, baseY - size * 1.3);
 }
 
+// Returns the created layers (e.g. for the title screen's season crossfade).
 export function buildBackdrop(scene, palette, worldWidth) {
   const { width: W, height: H } = scene.scale;
   const p = palette;
@@ -107,4 +108,5 @@ export function buildBackdrop(scene, palette, worldWidth) {
   for (let x = 60; x < near.width; x += 160 + rndN() * 200) {
     drawRoundTree(near.g, x, hillY(x, nearShape) + 8, 40 + rndN() * 14, p.trunk, p.nearTree);
   }
+  return [sky, clouds.g, far.g, mid.g, near.g]; // so a caller can fade a whole backdrop
 }

@@ -67,7 +67,7 @@ export const HIDING_PLACES = [
     icon: '🌸',
     cost: 120,
     desc: 'A potting shed at the edge of the flower garden.',
-    spot: { x: 2450, kind: 'shed' },
+    spot: { x: 3290, kind: 'shed' },
   },
   {
     key: 'boathouse',

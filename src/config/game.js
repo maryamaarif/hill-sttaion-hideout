@@ -100,6 +100,12 @@ export const TRANSITION = {
   fadeMs: 400,
 };
 
+// Easy mode (Settings): slower detection everywhere and an extra life per level.
+export const EASY = {
+  detectionMultiplier: 1.5,
+  extraLives: 1,
+};
+
 export const CAMERA = {
   lerp: 0.09,
   lookAheadX: 90,

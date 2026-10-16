@@ -8,7 +8,8 @@
 //   upgrades       room upgrade keys owned
 //   items          item keys bought for the next level (used up when it starts)
 //   hidingPlaces   hiding place keys unlocked (permanent)
-//   settings       { muted, musicVolume, sfxVolume } (volumes 0..1)
+//   settings       { muted, musicVolume, sfxVolume, shake, colorBlind, easy, controls }
+//                  (see systems/Settings.js)
 const KEY = 'hill-station-hideout-save-v1';
 
 const defaults = () => ({
@@ -17,7 +18,20 @@ const defaults = () => ({
   upgrades: [],
   items: [],
   hidingPlaces: [],
-  settings: { muted: false, musicVolume: 0.5, sfxVolume: 0.8 },
+  settings: {
+    muted: false,
+    musicVolume: 0.5,
+    sfxVolume: 0.8,
+    shake: true,
+    colorBlind: false,
+    easy: false,
+    controls: {
+      left: ['LEFT', 'A'],
+      right: ['RIGHT', 'D'],
+      jump: ['SPACE', 'UP', 'W'],
+      hide: ['DOWN', 'S'],
+    },
+  },
 });
 
 let memory = null; // fallback when localStorage is blocked
@@ -34,6 +48,7 @@ export default class SaveSystem {
     const base = defaults();
     const data = { ...base, ...(stored ?? {}) };
     data.settings = { ...base.settings, ...(stored?.settings ?? {}) };
+    data.settings.controls = { ...base.settings.controls, ...(stored?.settings?.controls ?? {}) };
     for (const list of ['upgrades', 'items', 'hidingPlaces']) {
       if (!Array.isArray(data[list])) data[list] = [];
     }

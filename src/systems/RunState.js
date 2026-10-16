@@ -1,11 +1,13 @@
-import { LIVES } from '../config/game.js';
+import { EASY, LIVES } from '../config/game.js';
 import SaveSystem from './SaveSystem.js';
+import Settings from './Settings.js';
 
 // The data passed between scenes during one level: which level/season we are on,
 // lives carried between seasons, perks chosen on transition screens, items and
 // hiding places from the shop, and when the level started (for the speed bonus).
 export function newLevelRun(level, now, { items = [], hidingPlaces = [] } = {}) {
-  return { level, seasonIndex: 0, lives: LIVES.start, perks: [], items, hidingPlaces, startTime: now };
+  const lives = LIVES.start + (Settings.current.easy ? EASY.extraLives : 0); // Easy mode: an extra life
+  return { level, seasonIndex: 0, lives, perks: [], items, hidingPlaces, startTime: now };
 }
 
 // Start a level from the save: bought items are used up (taken out of the save),

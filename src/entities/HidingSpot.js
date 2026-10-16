@@ -1,4 +1,5 @@
-import { DEPTH, UI } from '../config/game.js';
+import { DEPTH } from '../config/game.js';
+import { addActionHint } from '../ui/KeyIcons.js';
 
 // A place the player can hide by pressing Down: bush, flower bed, rock overhang,
 // reeds, luggage, the gap between train carriages, a leaf pile, etc. Drawn in
@@ -42,17 +43,8 @@ export default class HidingSpot {
     this.height = tex.height;
     this.bounds = new Phaser.Geom.Rectangle(0, 0, this.width, this.height + 4);
 
-    this.prompt = scene.add
-      .text(x, 0, '↓ hide', {
-        fontFamily: UI.font,
-        fontSize: '16px',
-        color: UI.textColor,
-        stroke: UI.strokeColor,
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5)
-      .setDepth(DEPTH.popup)
-      .setVisible(false);
+    // A key icon (no words): the player's current Hide key.
+    this.prompt = addActionHint(scene, x, 0, ['hide']).setDepth(DEPTH.popup).setVisible(false);
     this.bob = 0;
     scene.tweens.add({ targets: this, bob: -5, duration: 500, yoyo: true, repeat: -1 });
     this.setPosition(x, baseY);

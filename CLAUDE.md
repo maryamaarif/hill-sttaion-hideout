@@ -112,7 +112,7 @@ Player meters (stamina and breath) float above the player's head only while they
 - `src/systems/AudioSystem.js`: one shared audio graph (master → music / SFX gains), so music continues across scenes and crossfades when the track changes.
 - **Music**: looping step-sequencer tracks in `src/config/music.js` (patterns of note tokens). Spring gentle, Summer upbeat, Fall nostalgic with a train "chuff" rhythm, Winter slow and sparse bells, `room` for menu / hub / level complete. A season's track is its `music` key (default: the season key).
 - **SFX** recipes in `src/config/audio.js`: jump, hide, suspect "?", alert "!", caught, hurdle cleared (chime), half life gained (heart), coin tick, season change, plus splash, dive, gasp, faint, bonk, bell, rumble, whoosh, launch, game over, select. Scenes and entities raise events (`player-jump`, `player-hide`, `police-suspect`, `police-alarm`, …) and `GameScene` plays the sound.
-- **Settings**: music and SFX volume sliders + mute in `SettingsPanel` (menu, hub, and ESC pause in game). **M mutes anywhere** (with a toast). Saved in `settings { muted, musicVolume, sfxVolume }`.
+- **Settings**: music and SFX volume sliders + mute in `SettingsPanel` (menu, hub, pause menu). **M mutes anywhere** (with a toast). Saved in `settings`.
 
 ### Levels and coins
 - Completing all 4 seasons finishes one level.
@@ -140,11 +140,22 @@ Each new level increases police count, patrol speed, vision cone length and dete
 - `hurdleTimingMultiplier` (< 1 = harder) scales breath, stamina, moving-platform speed and level-crossing warning time (`DifficultySystem.tuneSeason`).
 - Level 2 is noticeably harder (+1 officer, ~30% faster, ~25% longer cones, ~45% faster detection, 15% tighter timing).
 
-### Controls (planned)
-- Left / Right (or A / D): move
-- Up / Space (or W): jump
-- Down (or S): hide at a hiding spot / dive (swimming)
-- ESC: pause + settings (in game); M: mute anywhere
+### Controls
+- Left / Right (or A / D): move. Space / Up (or W): jump. Down (or S): hide, duck, dive.
+- **Remappable** (Settings → Controls): each action's first key can be rebound; `DEFAULT_CONTROLS` in `src/systems/Settings.js`. ESC, P, M and ENTER are reserved for menus.
+- ESC or P: pause menu (Resume, Restart season, Settings, Quit to menu). M: mute anywhere.
+- Key icons (`src/ui/KeyIcons.js`) always show the player's current key, never a hard-coded one.
+
+### First minute (Spring teaches without words)
+- The title screen shows the guest house on its hill with the seasons cycling behind it; buttons: Play, Settings, Credits (+ Your room once there is progress). Credits text: `src/config/credits.js`.
+- Spring (`tutorial: true`) has **no instruction sentences**: no signs, no hint lines in banners. The first screen teaches by layout, with only key icons next to the action (`layout.keyHints`), which fade once used: walk (← →), jump a small log (jump key), a bush (hide key) right before the first officer turns and sweeps his cone over it, then Hurdle 1.
+- Hiding-spot prompts everywhere are a key icon, not words.
+
+### Accessibility (Settings)
+- **Colour-blind mode**: vision cones get a ray pattern and a thick dark edge (rays double when alarmed); deadly water gets a hatch; obstacles get striped outlines (`colorBlindOverlay` from `LevelBuilder`). Level crossings always show a barrier arm (shape, not just lamp colour); the detection meter always uses "?" / "!".
+- **Easy mode**: police detection × `EASY.detectionMultiplier`, +`EASY.extraLives` life when a level starts.
+- **Screen shake** on/off: all shake goes through `GameScene.shake()`.
+- Settings live in `Settings.current` (cached) and `Settings.update()` saves and emits `changed`, so the game reacts immediately (rebinding keys, colour-blind overlay).
 
 ## Code structure
 
@@ -167,12 +178,14 @@ src/systems/            LevelBuilder (layout → terrain/hazards/triggers), Hurd
                         BlizzardSystem (fog, snow), FootprintSystem (trails police follow),
                         PerkSystem (applies chosen perks to a season config),
                         ShopSystem (items + unlocked hiding places), Effects (shared),
+                        Settings (cached settings, controls, change events),
                         LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax),
                         Room (the hub room, drawn from owned upgrades)
 src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects),
-                        SettingsPanel (volume sliders, mute; menu / hub / pause),
+                        SettingsPanel (volumes, mute, shake, colour-blind, easy, controls),
+                        PauseMenu (resume, restart season, settings, quit), KeyIcons,
                         PlayerMeters (stamina/breath bars above the player)
 src/systems/RunState.js newLevelRun(): the run data passed between scenes
 src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)

@@ -3,6 +3,7 @@ import { createSeasonTextures, seededRandom } from '../art/TextureFactory.js';
 import HidingSpot from '../entities/HidingSpot.js';
 import Mover from '../entities/Mover.js';
 import Train from '../entities/Train.js';
+import { addActionHint } from '../ui/KeyIcons.js';
 
 // Turns a season's layout data into terrain, hazards, hiding spots, moving
 // platforms and the goal. Shared by every season: a new season only needs a
@@ -22,6 +23,7 @@ import Train from '../entities/Train.js';
 //   slopes       [{ x, w, y1, y2, launch? }]  smooth slopes (see systems/SlopeSystem.js)
 //   goal         { x, label, kind? }    kind 'house' = the guest house (Winter)
 //   hidingSpots  [{ x, kind, y?, w? }]   see entities/HidingSpot.js
+//   keyHints     [{ x, y, actions }]     key icons shown next to an action (no words)
 //   trees, flowerBeds, signs, heatZones, police, extraPolice, goal
 
 function addSolid(scene, solids, x, y, w, h) {
@@ -175,6 +177,13 @@ function drawPlatform(g, p, H, { x, y, w, h, kind }) {
       g.fillStyle(p.woodDark);
       for (let px = x + 4; px < x + w; px += 20) g.fillRect(px, y - 16, 4, 16);
       g.fillRect(x, y - 18, w, 4);
+      break;
+    case 'log': // fallen log lying on the ground
+      g.fillStyle(p.woodDark).fillRoundedRect(x, y, w, h, h / 2);
+      g.fillStyle(p.wood).fillRoundedRect(x + 2, y + 2, w - 4, h - 8, (h - 8) / 2);
+      g.fillStyle(p.woodDark).fillRect(x + 14, y + 6, 18, 2);
+      g.fillStyle(0xe8c79a).fillEllipse(x + w - 6, y + h / 2, 10, h - 4); // cut end
+      g.lineStyle(1, p.woodDark).strokeEllipse(x + w - 6, y + h / 2, 5, h / 2);
       break;
     case 'crate':
       g.fillStyle(p.woodDark).fillRect(x, y, w, h);
@@ -416,6 +425,28 @@ export default function buildLevel(scene, season) {
   }
 
   const speedScale = season.moverSpeedScale ?? 1;
+  // Colour-blind mode (toggled by GameScene): deadly water gets a hatch pattern and
+  // every obstacle a striped outline, so hazards don't rely on colour alone.
+  const colorBlindOverlay = scene.add.graphics().setDepth(DEPTH.water + 3);
+  for (const water of layout.water ?? []) {
+    if (water.swim) continue;
+    colorBlindOverlay.lineStyle(2, 0xffffff, 0.6);
+    for (let hx = water.x - (H - surfaceY); hx < water.x + water.w; hx += 14) {
+      const x1 = Math.max(water.x, hx);
+      const y1 = surfaceY + (x1 - hx);
+      const x2 = Math.min(water.x + water.w, hx + (H - surfaceY));
+      const y2 = surfaceY + (x2 - hx);
+      if (x2 > x1) colorBlindOverlay.lineBetween(x1, y1, x2, y2);
+    }
+    colorBlindOverlay.lineStyle(3, 0xffffff, 0.9).lineBetween(water.x, surfaceY, water.x + water.w, surfaceY);
+  }
+  for (const zone of obstacles) {
+    const { x, y, width: w, height: h } = zone.body;
+    colorBlindOverlay.lineStyle(3, 0x3b2a20, 0.9).strokeRect(x, y, w, h);
+    colorBlindOverlay.lineStyle(2, 0xffffff, 0.9);
+    for (let sy = y + 4; sy < y + h; sy += 10) colorBlindOverlay.lineBetween(x, sy, x + w, sy - 6);
+  }
+
   const movers = (layout.movers ?? []).map((def) =>
     def.kind === 'train' ? new Train(scene, def, speedScale, season.key) : new Mover(scene, def, speedScale),
   );
@@ -427,6 +458,13 @@ export default function buildLevel(scene, season) {
 
   for (const { x, text } of layout.signs ?? []) addSign(scene, p, x, groundTopAt(layout, x), text);
 
+  // Key icons (no words) next to an action; GameScene fades them once used.
+  const keyHints = (layout.keyHints ?? []).map((h) => {
+    const icon = addActionHint(scene, h.x, h.y, h.actions).setDepth(DEPTH.popup);
+    scene.tweens.add({ targets: icon, y: h.y - 6, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return { icon, actions: h.actions };
+  });
+
   if (layout.goal.kind === 'house') drawHouseGoal(scene, p, layout.goal.x, groundTopAt(layout, layout.goal.x), layout.goal.label);
   else addGoal(scene, p, layout.goal, groundTopAt(layout, layout.goal.x));
   const goalZone = addTrigger(scene, layout.goal.x - 20, 0, 40, H);
@@ -435,7 +473,7 @@ export default function buildLevel(scene, season) {
   const hurdles = season.hurdles.map((h) => ({ ...h, ...layout.hurdles[h.key] }));
 
   const groundAt = (x) => groundTopAt(layout, x);
-  return { solids, hazards, obstacles, swimWaters, movers, hidingSpots, goalZone, hurdles, groundAt };
+  return { solids, hazards, obstacles, swimWaters, movers, hidingSpots, goalZone, hurdles, groundAt, keyHints, colorBlindOverlay };
 }
 
 export { addTrigger, groundTopAt };
