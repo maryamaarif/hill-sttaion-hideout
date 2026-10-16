@@ -15,7 +15,6 @@ export default {
     disguise: 'tourist', // tourists with cameras
   },
   // Rain showers: police can't see as far while it rains.
-  weather: { rain: { firstMs: 9000, everyMs: 22000, durationMs: 8000, policeVisibility: 0.85 } },
   wardrobe: {
     // Umbrella: hold the glide key (↑) in the air to float down slowly.
     outfit: {
@@ -59,6 +58,29 @@ export default {
     rotate: { min: 0, max: 360 },
     scale: { min: 0.7, max: 1.3 },
     alpha: { start: 0.95, end: 0.4 },
+  },
+  // ----- season rules you can see and hear (shared engine features) -----
+  // Footsteps splash in the puddles: a medium noise ring; officers inside it turn to look.
+  noise: { radius: 95, color: 0x9fd3ff, sound: 'stepSplash', particle: 'droplet', particleCount: 4, stepPx: 34 },
+  // Wet footprints that dry within moments (a trail for you, police ignore them).
+  traces: { texture: 'footprint', tint: 0x4f6478, alpha: 0.65, spacing: 24, lifeMs: 1600 },
+  // Spring shower: officers open umbrellas and can't see as far for 10 s.
+  weatherEvent: {
+    kind: 'shower', name: 'Spring shower', icon: '☔',
+    firstMs: 9000, everyMs: 30000, durationMs: 10000, warnMs: 1500,
+    policeVisibility: 0.7, umbrellas: true,
+  },
+  // The guest house in the background: window boxes full of flowers.
+  guestHouse: { flowerBoxes: true },
+  // Picnickers strolling the meadow and garden (walk beside them to blend in).
+  guests: {
+    spacing: 18,
+    margin: 16,
+    looks: [
+      { id: 'picnic-1', skin: 0xe8b98f, hair: 0x2b2018, layers: { top: { style: 'shirt', color: 0xf6b3cc, trim: 0xffffff }, bottom: { style: 'trousers', color: 0xe8e0cc }, shoes: { style: 'shoes', color: 0x8a5a3c }, hat: { style: 'sunHat', color: 0xf3e3c3, trim: 0xd94f4a } } },
+      { id: 'picnic-2', skin: 0xc68c62, hair: 0x1a1410, layers: { top: { style: 'polo', color: 0x82c86f }, bottom: { style: 'jeans', color: 0x4a6a9a }, shoes: { style: 'sneakers', color: 0xffffff, trim: 0x2f6fd8 } } },
+      { id: 'picnic-3', skin: 0xf2c9a0, hair: 0xb07a3a, layers: { top: { style: 'sweater', color: 0xfff176, trim: 0xffffff }, bottom: { style: 'trousers', color: 0x7a8a5a }, shoes: { style: 'shoes', color: 0x5a3a28 }, accessories: [{ style: 'camera' }] } },
+    ],
   },
   // Lighting pass (art/Lighting.js): soft and fresh.
   lighting: { vignette: 0.22, bloom: 0.25, light: 0xfff2e0, lightAlpha: 0.22, tint: 0xffe4f0, tintAlpha: 0.06 },

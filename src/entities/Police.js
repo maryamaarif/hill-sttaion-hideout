@@ -81,8 +81,9 @@ export default class Police {
     this.pauseUntil = 0;
     this.detection = 0;
     this.seeing = false;
-    this.mode = 'patrol'; // 'patrol' | 'track' | 'search' | 'return'
+    this.mode = 'patrol'; // 'patrol' | 'look' | 'track' | 'search' | 'return'
     this.clue = null;
+    this.hearCooldownUntil = 0;
     this.draw();
   }
 
@@ -111,6 +112,7 @@ export default class Police {
 
   canSee(player, time, blockers = []) {
     if ((player.hidden && !player.exposed) || !player.visible || time < player.graceUntil) return false;
+    if (player.inCrowd) return false; // blending into a group of guests
     const b = player.body;
     return [b.top + 4, b.center.y, b.bottom - 4].some((y) => this.seesPoint(b.center.x, y, blockers));
   }
@@ -179,6 +181,28 @@ export default class Police {
     return active && this.detection >= 1;
   }
 
+  // ----- hearing -----
+
+  // A footstep inside the season's noise ring (NoiseSystem). A patrolling officer
+  // turns toward the sound and looks for a moment. Fixed lookouts and officers
+  // waiting for a teaching moment don't react. Returns true if they turned.
+  hear(x, time) {
+    if (this.route.fixed || this.waiting || this.mode !== 'patrol' || time < this.hearCooldownUntil) return false;
+    this.mode = 'look';
+    this.dir = Math.sign(x - this.x) || this.dir;
+    this.lookUntil = time + POLICE.hearLookMs;
+    this.hearCooldownUntil = time + POLICE.hearLookMs + POLICE.hearCooldownMs;
+    this.scene.events.emit('police-hear', this);
+    return true;
+  }
+
+  // Spring shower: an open umbrella over the officer (the cone is shorter too, via
+  // `visibility`).
+  setUmbrella(on) {
+    if (on && !this.umbrella) this.umbrella = this.scene.add.image(0, 0, 'police-umbrella').setScale(0.5).setDepth(DEPTH.police + 1);
+    this.umbrella?.setVisible(on);
+  }
+
   // ----- footprints -----
 
   followClues(time, clues, blockers) {
@@ -206,6 +230,12 @@ export default class Police {
 
   // Returns true while walking.
   move(time, dt) {
+    if (this.mode === 'look') {
+      if (time < this.lookUntil) return false;
+      this.mode = 'patrol';
+      this.dir = this.walkDir;
+      return false;
+    }
     if (this.mode === 'track') {
       const dx = this.clue.x - this.x;
       if (Math.abs(dx) < 4) {
@@ -263,6 +293,7 @@ export default class Police {
 
   draw() {
     this.sprite.setPosition(this.x, this.groundY + 1).setFlipX(this.dir < 0);
+    this.umbrella?.setPosition(this.x - this.dir * 2, this.groundY - POLICE.umbrellaOffsetY);
     this.shadow.follow(this.x, this.groundY + 1, true, this.sprite.visible ? this.sprite.alpha : 0);
 
     // Vision cone: a fan clipped to the ground, warming to red as the meter fills.
@@ -299,7 +330,7 @@ export default class Police {
     this.meter.clear();
     const top = this.groundY - POLICE.meterOffsetY;
     if (this.detection <= 0) {
-      const tracking = this.mode === 'track' || this.mode === 'search';
+      const tracking = this.mode === 'track' || this.mode === 'search' || this.mode === 'look';
       this.icon.setText(tracking ? '?' : '').setColor('#ffd84a').setPosition(this.x, top + 4).setScale(0.9);
       return;
     }

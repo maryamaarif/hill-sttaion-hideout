@@ -596,3 +596,20 @@ export function buildPoliceLook(scene, look) {
   }
 }
 
+
+// Harmless guests (season.guests.looks): same skeleton, painter and scale as the
+// player and police, with their own body and clothes. Textures `guest-<id>-<pose>`.
+const GUEST_POSES = ['idle', 'walk1', 'walk2', 'walk3', 'walk4', 'ski'];
+export function buildGuestLook(scene, id, look) {
+  const o = { skin: look.skin ?? 0xe0b48e, hair: look.hair ?? 0x3a2a20, skis: look.skis, layers: look.layers ?? {} };
+  for (const pose of GUEST_POSES) bake(scene, `guest-${id}-${pose}`, o, pose);
+  const anim = `guest-walk-${id}`;
+  if (!scene.anims.exists(anim)) {
+    scene.anims.create({
+      key: anim,
+      frames: ['walk1', 'walk2', 'walk3', 'walk4'].map((p) => ({ key: `guest-${id}-${p}` })),
+      frameRate: 6,
+      repeat: -1,
+    });
+  }
+}

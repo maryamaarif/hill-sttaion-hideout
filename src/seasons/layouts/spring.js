@@ -91,6 +91,14 @@ export default {
   ],
 
   // Trigger lines for each hurdle, keyed by the hurdle key in the season config.
+  // Picnickers strolling (season.guests): walk beside them to blend into the crowd.
+  // One group in the meadow (safe to discover), two in the garden near the patrols.
+  guests: [
+    { from: 1150, to: 1750, count: 3, speed: 34 },
+    { from: 3460, to: 3880, count: 3, speed: 36 },
+    { from: 4250, to: 4650, count: 2, speed: 38, startAt: 'to', looks: [1, 2] },
+  ],
+
   hurdles: {
     meadow: { startX: 1050, endX: 2150 },
     'stepping-stones': { startX: 2300, endX: 3200 },

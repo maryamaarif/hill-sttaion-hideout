@@ -19,6 +19,16 @@ The seasons change the **rules**, not just the colours. The controls stay the sa
 | **Fall** | **The vintage train:** a moving platform you ride on the roof, ducking under bridges and hiding between carriages. **Timetables:** level-crossing trains are deadly but block police vision. **Wind:** gusts reveal what is hidden under the leaf piles. | Ride the train · cross the tracks · leaf path (some piles hide holes, some hide you) |
 | **Winter** | **Slippery** ground everywhere. **Skis:** you auto-run downhill (→ faster, ← slower). **Blizzard:** fog shrinks your view to a circle, police cones shrink too, and your **footprints** give you away. Police follow them. | Ski slope with police skiers · ski jump (full speed, hold jump to glide) · blizzard to the guest house |
 
+**Every season sounds, leaves traces and behaves differently.**
+
+| | Spring | Summer | Fall | Winter |
+|---|---|---|---|---|
+| Your footsteps (police inside the ring turn to look) | splash in puddles | crunch on gravel | rustle loudly in the leaves | quiet in the snow |
+| What you leave behind | wet prints that dry fast | nothing | scattered leaves | deep prints police follow |
+| Weather event (about 10 s) | a shower: police open umbrellas and see less | a heatwave: stamina drains fast | a wind gust: leaves blow off pits and hiders | a blizzard: you only see a circle |
+| The guest house on the hill | flower boxes | open windows, a parasol | pumpkins, firewood | snow on the roof, chimney smoke |
+| Other guests (walk beside them to blend into the crowd) | picnickers | sunbathers and swimmers | train passengers | skiers |
+
 **Clothes change the rules too.** Each season dresses you for the weather, and your outfit matters: a raincoat and umbrella you can float with in Spring, light summer clothes for the fastest run (a life jacket in the canoe, a swimsuit and goggles in the lake), an earthy autumn sweater that blends into the trees, and a puffer jacket that keeps the winter cold at bay (watch the cold meter in the blizzard). The plain-clothes police change their disguise every season too: tourists, beachgoers, train passengers, skiers. The one thing that always gives them away is their mirrored sunglasses and earpiece.
 
 Between seasons you choose a **perk** for the next one (e.g. *Warm coat: less slip in Winter*). In your **room** you spend coins on room upgrades (the room visibly changes), items for the next level (disguise hat, running shoes, thermos, map), extra hiding places in the seasons, and new outfits (a colour variant and a camouflage outfit per season). Each new level is noticeably harder.

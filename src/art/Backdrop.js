@@ -123,7 +123,7 @@ export function guestHouse(ctx, x, ground, p, scale = 1, rnd = seeded(9)) {
     ctx.stroke();
   }
   ctx.restore();
-  if (p.snowRoof) {
+  if (p.snowRoof || p.decor?.snowRoof) {
     ctx.fillStyle = css(0xffffff);
     ctx.beginPath();
     ctx.moveTo(-82, -60);
@@ -137,17 +137,58 @@ export function guestHouse(ctx, x, ground, p, scale = 1, rnd = seeded(9)) {
   }
   ctx.fillStyle = css(shade(c.trim, 0.8));
   ctx.fillRect(-82, -64, 164, 5);
+  const d = p.decor ?? {};
   for (const wx of [-48, -22, 22, 48]) {
     radialGlow(ctx, wx, -36, 16, c.window, 0.45);
     roundRect(ctx, wx - 8, -46, 16, 18, 2);
     const wg = ctx.createLinearGradient(0, -46, 0, -28);
-    wg.addColorStop(0, css(shade(c.window, 1.2)));
-    wg.addColorStop(1, css(shade(c.window, 0.85)));
-    ctx.fillStyle = wg;
-    ctx.fill();
-    ctx.fillStyle = css(c.trim);
-    ctx.fillRect(wx - 0.8, -46, 1.6, 18);
-    ctx.fillRect(wx - 8, -38, 16, 1.4);
+    if (d.openWindows) {
+      // Thrown open for the summer air: dark room inside, a curtain blowing out.
+      wg.addColorStop(0, css(0x3a2a22));
+      wg.addColorStop(1, css(0x5a4232));
+      ctx.fillStyle = wg;
+      ctx.fill();
+      ctx.fillStyle = css(0xf8f2e4);
+      ctx.beginPath();
+      ctx.moveTo(wx - 7, -45);
+      ctx.quadraticCurveTo(wx - 1, -40, wx - 5, -29);
+      ctx.lineTo(wx - 8, -29);
+      ctx.closePath();
+      ctx.fill();
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = css(side < 0 ? 0x4f9f6a : 0x3f8a5a);
+        ctx.beginPath();
+        ctx.moveTo(wx + side * 8, -46);
+        ctx.lineTo(wx + side * 14, -44);
+        ctx.lineTo(wx + side * 14, -30);
+        ctx.lineTo(wx + side * 8, -28);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      wg.addColorStop(0, css(shade(c.window, 1.2)));
+      wg.addColorStop(1, css(shade(c.window, 0.85)));
+      ctx.fillStyle = wg;
+      ctx.fill();
+      ctx.fillStyle = css(c.trim);
+      ctx.fillRect(wx - 0.8, -46, 1.6, 18);
+      ctx.fillRect(wx - 8, -38, 16, 1.4);
+    }
+    if (d.flowerBoxes) {
+      // Window boxes spilling with spring flowers.
+      vGradient(ctx, wx - 10, -27, 20, 5, [[0, shade(c.trim, 1.2)], [1, shade(c.trim, 0.75)]]);
+      const fr = seeded(wx + 50);
+      for (let i = 0; i < 9; i++) {
+        const fx = wx - 9 + i * 2.2;
+        ctx.strokeStyle = css(0x4f8f3a);
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(fx, -27);
+        ctx.lineTo(fx + (fr() - 0.5) * 2, -30 - fr() * 3);
+        ctx.stroke();
+        radialGlow(ctx, fx, -31 - fr() * 2, 1.9, [0xf48fb1, 0xfff176, 0xce93d8, 0xffffff][i % 4], 1, 0.9);
+      }
+    }
   }
   radialGlow(ctx, 0, -86, 10, c.window, 0.5);
   ctx.fillStyle = css(c.window);
@@ -157,6 +198,83 @@ export function guestHouse(ctx, x, ground, p, scale = 1, rnd = seeded(9)) {
   vGradient(ctx, -9, -30, 18, 30, [[0, shade(c.trim, 1.1)], [1, shade(c.trim, 0.7)]]);
   ctx.fillStyle = css(shade(c.trim, 0.7));
   ctx.fillRect(-70, -3, 140, 4);
+  if (d.snowRoof || p.snowRoof) {
+    // Icicles along the eaves.
+    ctx.fillStyle = css(0xe8f4ff, 0.95);
+    for (let ix = -76; ix <= 76; ix += 7) {
+      const len = 3 + ((ix * 13) % 5);
+      ctx.beginPath();
+      ctx.moveTo(ix - 1.5, -59);
+      ctx.lineTo(ix + 1.5, -59);
+      ctx.lineTo(ix, -59 + len);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  if (d.parasol) {
+    // A striped parasol and a little café table on the lawn.
+    ctx.strokeStyle = css(0x5a4030);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(98, 0);
+    ctx.lineTo(96, -36);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = css(i % 2 ? 0xffffff : 0xe0573f);
+      ctx.beginPath();
+      ctx.moveTo(96, -42);
+      ctx.lineTo(76 + i * 7, -32);
+      ctx.lineTo(83 + i * 7, -32);
+      ctx.closePath();
+      ctx.fill();
+    }
+    vGradient(ctx, 86, -12, 22, 3, [[0, 0xffffff], [1, 0xd8d0c0]]);
+    ctx.fillStyle = css(0x5a4030);
+    ctx.fillRect(96, -9, 2, 9);
+  }
+  if (d.pumpkins) {
+    // Pumpkins on the doorstep.
+    for (const [px, r] of [[-20, 6], [16, 7], [24, 4.5]]) {
+      ctx.save();
+      ctx.translate(px, -r * 0.8);
+      const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 1, 0, 0, r);
+      g.addColorStop(0, css(0xffb347));
+      g.addColorStop(1, css(0xc8601a));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.15, r * 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = css(0xa04a10, 0.6);
+      ctx.lineWidth = 0.6;
+      for (const k of [-0.5, 0, 0.5]) {
+        ctx.beginPath();
+        ctx.ellipse(k * r, 0, r * 0.35, r * 0.82, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = css(0x4f6a2a);
+      ctx.fillRect(-0.8, -r * 0.95, 1.6, 2.5);
+      ctx.restore();
+    }
+  }
+  if (d.firewood) {
+    // A stack of split firewood against the wall, ready for winter.
+    for (let row = 0; row < 4; row++) {
+      for (let i = 0; i < 6 - row; i++) {
+        const lx = -100 + i * 6.4 + row * 3.2;
+        const ly = -4 - row * 5.6;
+        radialGlow(ctx, lx, ly, 3.4, 0x8a5a34, 1, 2.6);
+        ctx.fillStyle = css(0xe8c79a);
+        ctx.beginPath();
+        ctx.arc(lx, ly, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = css(0xb8865a, 0.8);
+        ctx.lineWidth = 0.4;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 1.1, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
   ctx.restore();
 }
 
@@ -394,7 +512,7 @@ export function buildBackdrop(scene, season, worldWidth) {
       if (p.treeStyle === 'pine') conifer(ctx, x, g, 34 + rnd() * 16, mix(p.midTree, haze, 0.1), { snow: 0xffffff, rnd });
       else roundTree(ctx, x, g, 30 + rnd() * 12, { ...p, nearTree: mix(p.midTree, haze, 0.1) }, p.treeStyle, rnd);
     }
-    guestHouse(ctx, 620, houseGround + 4, p, 0.8, seeded(9));
+    guestHouse(ctx, 620, houseGround + 4, { ...p, decor: season.guestHouse }, 0.8, seeded(9));
     for (const cx of [1150, 1900, 2600]) if (cx < wH - 60) cottage(ctx, cx, ridge(cx, hillShape) + 3, p, 0.8, rnd);
     if (wH > 1500) viaduct(ctx, 1320, 1620, H * 0.56, H, mix(p.stone ?? 0xb8ada0, haze, 0.15), rnd);
     if (p.groundStyle === 'snow' && wH > 900) {
@@ -434,16 +552,19 @@ export function buildBackdrop(scene, season, worldWidth) {
     }
   }), F.hills, DEPTH.mid);
 
-  // Chimney smoke from the guest house (moves with the hills layer).
-  const smoke = scene.add.particles(620 + 0.8 * 41, houseGround + 4 - 0.8 * 118, 'puff', {
-    speedY: { min: -26, max: -14 },
-    speedX: { min: 4, max: 14 },
-    scale: { start: 0.35, end: 1.4 },
-    alpha: { start: 0.45, end: 0 },
-    lifespan: 3400,
-    frequency: 420,
-  });
-  objects.push(smoke.setScrollFactor(F.hills, 0).setDepth(DEPTH.mid + 1));
+  // Chimney smoke from the guest house in winter (season.guestHouse.smoke), moving
+  // with the hills layer.
+  if (season.guestHouse?.smoke) {
+    const smoke = scene.add.particles(620 + 0.8 * 41, houseGround + 4 - 0.8 * 118, 'puff', {
+      speedY: { min: -26, max: -14 },
+      speedX: { min: 4, max: 14 },
+      scale: { start: 0.35, end: 1.4 },
+      alpha: { start: 0.45, end: 0 },
+      lifespan: 3400,
+      frequency: 420,
+    });
+    objects.push(smoke.setScrollFactor(F.hills, 0).setDepth(DEPTH.mid + 1));
+  }
 
   // Near layer: trees, fences, benches, lamp posts.
   const wN = layerWidth(W, worldWidth, F.near);

@@ -63,7 +63,6 @@ export default {
     glideGravity: 0.4, // gravity while gliding (holding Jump after a launch)
   },
   blizzard: { radius: 170, fogColor: 0xcfdbe6, fogAlpha: 0.95, policeVisibility: 0.7, fadeDistance: 220 },
-  footprints: { spacing: 26, lifeMs: 7000 },
   hidingSpots: ['hut', 'drift'],
   hurdles: [
     { key: 'ski-slope', name: 'Ski Slope', hint: '→ faster, ← slower, jump the rocks and trees' },
@@ -79,6 +78,25 @@ export default {
     speedY: { min: 40, max: 90 },
     scale: { min: 0.5, max: 1.3 },
     alpha: { min: 0.6, max: 1 },
+  },
+  // ----- season rules you can see and hear (shared engine features) -----
+  // Snow is quiet: a small noise ring...
+  noise: { radius: 50, color: 0xdbe8f5, sound: 'stepSnow', particle: 'snowflake', particleCount: 2, stepPx: 34 },
+  // ...but you leave deep footprints that last, and police follow fresh trails.
+  traces: { texture: 'footprint', tint: 0x6d86a0, alpha: 0.9, spacing: 26, lifeMs: 7000, followable: true },
+  // Blizzard (inside layout.blizzardZones): view shrinks to a circle, cones shrink.
+  weatherEvent: { kind: 'blizzard', name: 'Blizzard', icon: '❄️' },
+  // The guest house in the background: snow on the roof, smoke from the chimney.
+  guestHouse: { snowRoof: true, smoke: true },
+  // Skiers heading down the slope (ski alongside them to blend in).
+  guests: {
+    spacing: 22,
+    margin: 18,
+    looks: [
+      { id: 'skier-1', skin: 0xe8b98f, hair: 0x2b2018, skis: 0xffd23f, layers: { top: { style: 'puffer', color: 0x82c86f, trim: 0xffffff }, bottom: { style: 'snowpants', color: 0x2f2f3a }, shoes: { style: 'snowBoots', color: 0x3a3a40, trim: 0xffffff }, hat: { style: 'beanie', color: 0xffd23f, trim: 0xffffff }, accessories: [{ style: 'goggles' }, { style: 'gloves', color: 0x2a2a2e }] } },
+      { id: 'skier-2', skin: 0xc68c62, hair: 0x1a1410, skis: 0x2f6fd8, layers: { top: { style: 'puffer', color: 0xce93d8, trim: 0xffffff }, bottom: { style: 'snowpants', color: 0x34506e }, shoes: { style: 'snowBoots', color: 0x3a3a40, trim: 0xffffff }, hat: { style: 'beanie', color: 0xd94f4a, trim: 0xffffff }, accessories: [{ style: 'gloves', color: 0x2a2a2e }] } },
+      { id: 'skier-3', skin: 0xf2c9a0, hair: 0xd9a441, skis: 0xd94f4a, layers: { top: { style: 'puffer', color: 0xff8c42, trim: 0xffffff }, bottom: { style: 'snowpants', color: 0x2f2f3a }, shoes: { style: 'snowBoots', color: 0x3a3a40, trim: 0xffffff }, accessories: [{ style: 'goggles' }, { style: 'gloves', color: 0x2a2a2e }] } },
+    ],
   },
   // Lighting pass (art/Lighting.js): cool blue.
   lighting: { vignette: 0.3, bloom: 0.2, light: 0xe6f2ff, lightAlpha: 0.2, tint: 0xa8c4e8, tintAlpha: 0.12 },

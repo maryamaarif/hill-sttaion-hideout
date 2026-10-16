@@ -95,6 +95,31 @@ export default {
     scale: { min: 0.7, max: 1.2 },
     alpha: { start: 0.9, end: 0 },
   },
+  // ----- season rules you can see and hear (shared engine features) -----
+  // Gravel crunches: a noise ring a little bigger than Spring's.
+  noise: { radius: 105, color: 0xffe6a0, sound: 'stepCrunch', particle: 'dust', tint: 0xe8c890, particleCount: 4, stepPx: 30 },
+  // No traces on dry rock and sand.
+  traces: null,
+  // Heatwave: for 10 s stamina drains twice as fast standing in the sun, and even
+  // moving in the sun drains it. Shade matters.
+  weatherEvent: {
+    kind: 'heatwave', name: 'Heatwave', icon: '🌡️',
+    startX: 520, everyMs: 30000, durationMs: 10000, warnMs: 1500,
+    heatDrain: 2, movingDrain: 0.35, overlay: { color: 0xff9a3a, alpha: 0.12 },
+  },
+  // The guest house in the background: windows thrown open and a parasol out.
+  guestHouse: { openWindows: true, parasol: true },
+  // Swimmers in the lake and sunbathers on the shore (swim or walk beside them).
+  guests: {
+    spacing: 22,
+    margin: 18,
+    swimDepth: 30,
+    looks: [
+      { id: 'swim-1', skin: 0xe8b98f, hair: 0x2b2018, layers: { top: { style: 'swimsuit', color: 0xff5e78 }, bottom: { style: 'swim', color: 0xff5e78 }, shoes: { style: 'bare' } } },
+      { id: 'swim-2', skin: 0xb07a52, hair: 0x1a1410, layers: { bottom: { style: 'swim', color: 0x2f6fd8 }, shoes: { style: 'bare' }, hat: { style: 'cap', color: 0xffffff } } },
+      { id: 'swim-3', skin: 0xf2c9a0, hair: 0xd9a441, layers: { top: { style: 'tshirt', color: 0x6ec6ff }, bottom: { style: 'shorts', color: 0xffd23f }, shoes: { style: 'flipflops' }, hat: { style: 'sunHat', color: 0xf6e7c1, trim: 0x2f6fd8 } } },
+    ],
+  },
   // Lighting pass (art/Lighting.js): bright and saturated.
   lighting: { vignette: 0.22, bloom: 0.16, light: 0xfff6c0, lightAlpha: 0.2 },
   palette: {

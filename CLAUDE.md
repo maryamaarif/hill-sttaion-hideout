@@ -77,7 +77,11 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 | Skis: auto-run right (→ faster, ← slower), stays on through the air; hold Jump after a launch to glide | `skiZones[{x,w}]`, season `ski { cruiseSpeed, minSpeed, maxSpeed, acceleration, airAcceleration, glideGravity }` | Winter |
 | Ground obstacles on ground or slope: jump them | `obstacles[{x,kind:'pine'\|'rock',h?}]` | Winter |
 | Blizzard: fog cuts view to a circle around the player; police cones shrink | `blizzardZones[{x,w}]`, season `blizzard { radius, fogColor, fogAlpha, policeVisibility, fadeDistance }` | Winter |
-| Footprints that fade; police who see one follow the trail, search where it ends, return | `footprintZones[{x,w}]`, season `footprints { spacing, lifeMs }`, `POLICE.trackSpeedScale/trailStepRange/searchMs` | Winter |
+| Traces left when walking (prints, scattered leaves) that fade; `followable` ones are followed by police (trail → search → return) | season `traces { texture, tint, alpha, spacing, lifeMs, followable?, scatter?, zones? }`, `POLICE.trackSpeedScale/trailStepRange/searchMs` (`TraceSystem`) | Spring wet prints, Fall leaves, Winter deep prints |
+| Footstep noise ring; patrolling officers inside it turn and look (`Police.hear`), fixed/waiting ones don't; silent while hidden or in a crowd | season `noise { radius, color, sound, particle, tint, stepPx, onSkis? }`, `POLICE.hearLookMs/hearCooldownMs` (`NoiseSystem`) | all |
+| One weather event per season with a HUD badge: timed `shower` (umbrellas, `policeVisibility`) or `heatwave` (`heatDrain`, `movingDrain`), or driven `gust` (season `wind`) / `blizzard` (`blizzardZones`) | season `weatherEvent { kind, name, icon, firstMs \| startX, everyMs, durationMs, warnMs, ... }` (`WeatherSystem`) | all |
+| Guests: harmless NPC groups (`walk`, `swim`, `ski`); beside them the player is IN THE CROWD (police can't see them, no noise): a moving hiding spot | layout `guests[{from,to,count,mode,speed,startAt?,looks?,y?}]`, season `guests { looks, spacing, margin, swimDepth }` (`GuestGroup`) | all |
+| Guest house in the background changes with the season | season `guestHouse { flowerBoxes, openWindows, parasol, pumpkins, firewood, snowRoof, smoke }` | all |
 | Officers on skis, faster patrols, standing on slopes (ground height follows the terrain) | `police[{skis, speedScale}]` | Winter |
 | Guest house as the goal | `goal { kind: 'house' }` | Winter |
 | Level difficulty also tightens hurdle timing: less breath and stamina, faster movers | `DifficultySystem.tuneSeason` × `hurdleTimingMultiplier` | all |
@@ -86,10 +90,20 @@ Player meters (stamina and breath) float above the player's head only while they
 
 **Seasons must change the RULES, not just the visuals.** Movement, friction, visibility, hazards and hiding spots differ per season. Each season's config file in `src/seasons/` declares these differences.
 
+### Season rules you can see and hear (so judges get the theme by playing)
+| | Spring | Summer | Fall | Winter |
+|---|---|---|---|---|
+| **Noise** (ring around the moving player; officers inside turn to look) | puddles splash, medium ring | gravel crunches, a bit bigger | leaves rustle, **biggest ring** | snow is quiet, **small ring** |
+| **Traces** | wet prints that dry in ~1.5 s | none | scattered leaves | **deep prints police follow** |
+| **Weather event** (~10 s, HUD badge) | shower: umbrellas, police cones ×0.7 | heatwave: stamina drains ×2, even moving | wind gust: leaves blow off pits and hiders | blizzard: view shrinks to a circle |
+| **Guest house** (background) | flower boxes | open windows, parasol | pumpkins, firewood | snow, icicles, chimney smoke |
+| **Guests** (blend in beside them) | picnickers | sunbathers, swimmers | train passengers | skiers |
+All of it is season config (`noise`, `traces`, `weatherEvent`, `guestHouse`, `guests`) + layout `guests`; a new season or level only needs new settings.
+
 ### Seasonal wardrobe (clothes change the rules)
 - The player is a **layered character** (`src/art/Character.js`): body, bottom, shoes, top, accessories, hat. Each layer has drawers per style and follows the same pose geometry, so every outfit has every pose: idle/idle2 (breathing), run1–run6, walk1–walk4, jump, fall, crouch/hide, caught, ski, skiAir, glide. An outfit is baked to `pl-<outfitId>-<pose>` textures; changing clothes just switches the prefix.
 - Outfits are **data in each season config** (`wardrobe`): `outfit` (default), `variants` (shop), `swaps` (per-hurdle changes), `puff` (particles for the change). `resolveOutfit` in `src/systems/Wardrobe.js` merges them.
-  - **Spring**: raincoat, jeans, rubber boots, umbrella. Hold the glide key (↑) in the air to float (`ability: 'umbrella'`). Rain showers (`weather.rain`) shorten police vision.
+  - **Spring**: raincoat, jeans, rubber boots, umbrella. Hold the glide key (↑) in the air to float (`ability: 'umbrella'`). Spring showers (`weatherEvent`) shorten police vision.
   - **Summer**: t-shirt, shorts, sneakers, sun hat, sunglasses: fastest run (`effects`). Swaps to a life jacket on the canoe hurdle and swimsuit + goggles on the swim.
   - **Fall**: knit sweater, scarf, corduroys, ankle boots: in front of trees / leaf piles police detect 20% slower (`foliage`), HUD shows BLENDING IN.
   - **Winter**: puffer, beanie, gloves, snow boots (+ skis on the ski hurdles): slower on foot, but the cold meter (`cold`, `layout.coldZones`, `layout.warmSpots`) drains half as fast. Hiding spots and warm windows refill it.
@@ -193,13 +207,14 @@ src/seasons/            one config per season (spring.js, summer.js, fall.js, wi
                         + index.js exporting SEASON_ORDER
 src/seasons/layouts/    one layout per season: ground, platforms, water, hiding spots,
                         decor, signs, hurdle start/end lines, goal (pixel coordinates)
-src/entities/           Player (run/jump/hide/swim/ski), Police, HidingSpot, Mover (canoe/log),
+src/entities/           Player (run/jump/hide/swim/ski), Police, HidingSpot, Mover (canoe/log), GuestGroup,
                         Train (multi-carriage mover)
 src/systems/            LevelBuilder (layout → terrain/hazards/triggers), HurdleSystem
                         (start/end trigger zones, checkpoints), HeatSystem (stamina),
                         CrossingSystem (timed level crossings, vision blockers),
                         LeafSystem (leaf piles, wind gusts), SlopeSystem (slopes, ramps),
-                        BlizzardSystem (fog, snow), FootprintSystem (trails police follow),
+                        BlizzardSystem (fog, snow), TraceSystem (prints/leaves, trails police follow),
+                        NoiseSystem (footstep rings officers hear), WeatherSystem (season events),
                         PerkSystem (applies chosen perks to a season config),
                         ShopSystem (items + unlocked hiding places), Effects (shared),
                         Settings (cached settings, controls, change events),

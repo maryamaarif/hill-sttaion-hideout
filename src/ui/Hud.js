@@ -198,6 +198,31 @@ export default class Hud {
     this.hiddenText.setText(hidden ? 'HIDDEN' : label ?? '');
   }
 
+  // Weather event badge under the hearts: icon + name, and a bar for the time
+  // left (blinks while the event is about to start).
+  setWeather(event, status) {
+    if (!this.weatherBadge && event) {
+      const fixed = (o) => o.setScrollFactor(0).setDepth(DEPTH.hud);
+      const panel = addPanel(this.scene, 8, 72, 176, 40, 'wood').setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.hud - 1);
+      const label = fixed(this.scene.add.text(18, 80, `${event.icon} ${event.name}`, textStyle(15)).setOrigin(0, 0));
+      const bar = fixed(this.scene.add.graphics());
+      this.weatherBadge = { panel, label, bar, parts: [panel, label, bar] };
+      this.weatherBadge.parts.forEach((o) => o.setVisible(false));
+    }
+    const b = this.weatherBadge;
+    if (!b) return;
+    const show = Boolean(status);
+    b.parts.forEach((o) => o.setVisible(show));
+    if (!show) return;
+    const warn = status.state === 'warn';
+    b.label.setAlpha(warn ? 0.5 + 0.5 * Math.abs(Math.sin(this.scene.time.now / 160)) : 1);
+    b.bar.clear();
+    if (!warn) {
+      b.bar.fillStyle(0x3b2a20, 0.8).fillRoundedRect(18, 101, 154, 5, 2);
+      b.bar.fillStyle(0x9fd3ff).fillRoundedRect(18, 101, 154 * Math.max(0, Math.min(1, status.left)), 5, 2);
+    }
+  }
+
   showBanner(title, sub = '') {
     this.bannerTitle.setText(title);
     this.bannerSub.setText(sub);

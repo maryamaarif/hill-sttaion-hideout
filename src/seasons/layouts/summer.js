@@ -101,6 +101,13 @@ export default {
     { x: 4060, text: 'Hold ↓ to dive under' },
   ],
 
+  // Guests (season.guests): sunbathers strolling the lake shore, swimmers drifting
+  // past the jetty. Swim beside them and the jetty officer can't pick you out.
+  guests: [
+    { from: 3740, to: 4080, count: 2, speed: 30, looks: [2, 0] },
+    { from: 4260, to: 4880, count: 3, speed: 24, mode: 'swim' },
+  ],
+
   hurdles: {
     quarry: { startX: 320, endX: 1790 },
     canoe: { startX: 1880, endX: 3760 },

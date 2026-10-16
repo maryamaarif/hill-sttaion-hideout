@@ -49,14 +49,17 @@ export default class HeatSystem {
   }
 
   // Returns 'faint' when stamina runs out, 'warn' once when it gets low, else null.
-  update(dt, player, shaded) {
+  // mod (a heatwave, WeatherSystem.heat): { drain: × standing drain, moving: drain while moving in the sun }
+  update(dt, player, shaded, mod = { drain: 1, moving: 0 }) {
     if (!this.active) return null;
     const cfg = this.config;
     const zone = this.inZone(player.x);
     this.inSun = zone && !shaded && !player.swimming;
     this.standingInSun = this.inSun && !player.moving;
+    this.heatwave = mod.drain > 1 || mod.moving > 0;
 
-    if (this.standingInSun) this.stamina = Math.max(0, this.stamina - dt / cfg.staminaSeconds);
+    if (this.standingInSun) this.stamina = Math.max(0, this.stamina - (dt * mod.drain) / cfg.staminaSeconds);
+    else if (this.inSun && mod.moving) this.stamina = Math.max(0, this.stamina - (dt * mod.moving) / cfg.staminaSeconds);
     else if (!this.inSun) this.stamina = Math.min(1, this.stamina + dt * cfg.regenPerSec);
 
     const target = this.inSun ? cfg.glareAlpha * (this.standingInSun ? 1.6 : 1) : 0;

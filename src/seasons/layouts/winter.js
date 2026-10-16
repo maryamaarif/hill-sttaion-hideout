@@ -48,7 +48,6 @@ export default {
   // house's warm windows refill it.
   coldZones: [{ x: 3440, w: 2000 }],
   warmSpots: [{ x: 5650, r: 220 }],
-  footprintZones: [{ x: 3440, w: 2000 }],
 
   hidingSpots: [
     { x: 3760, kind: 'hut' },
@@ -78,6 +77,11 @@ export default {
   signs: [
     { x: 220, text: 'On skis: → faster, ← slower' },
     { x: 2070, text: 'Full speed, then HOLD jump!' },
+  ],
+
+  // Skiers heading down the slope (season.guests): ski alongside to blend in.
+  guests: [
+    { from: 460, to: 1980, count: 3, speed: 250, mode: 'ski' },
   ],
 
   hurdles: {

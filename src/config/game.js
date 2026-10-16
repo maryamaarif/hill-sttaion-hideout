@@ -91,6 +91,10 @@ export const POLICE = {
   trackSpeedScale: 1.3, // officers hurry along a trail
   trailStepRange: 140, // next footprint must be this close to count as the same trail
   searchMs: 1800, // look around where the trail ends before going back
+  // Hearing footsteps (season.noise, NoiseSystem).
+  hearLookMs: 1300, // an officer who hears a step turns and looks this long
+  hearCooldownMs: 2600, // then ignores further steps for this long
+  umbrellaOffsetY: 58, // umbrella above the officer's feet in a shower
 };
 
 // Season transition screen timings (ms from the start of the scene).

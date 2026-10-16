@@ -103,4 +103,27 @@ export const SFX = {
   ],
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
+
+  // Footsteps by season (season.noise.sound): how loud the ground is.
+  stepSplash: [
+    { freq: 2600, to: 900, noise: true, start: 0, duration: 0.09, gain: 0.22 },
+    { freq: 520, to: 260, type: 'sine', start: 0, duration: 0.06, gain: 0.08 },
+  ],
+  stepCrunch: [
+    { freq: 3800, noise: true, start: 0, duration: 0.05, gain: 0.2 },
+    { freq: 2400, noise: true, start: 0.04, duration: 0.05, gain: 0.14 },
+  ],
+  stepRustle: [
+    { freq: 5200, to: 2200, noise: true, start: 0, duration: 0.16, gain: 0.26 },
+    { freq: 3400, to: 1500, noise: true, start: 0.07, duration: 0.14, gain: 0.18 },
+  ],
+  stepSnow: [{ freq: 900, to: 500, noise: true, start: 0, duration: 0.08, gain: 0.08 }],
+  // An officer heard something and turns to look.
+  hear: [{ freq: 520, to: 620, type: 'triangle', start: 0, duration: 0.1, gain: 0.16 }],
+  // A weather event begins (shower, heatwave, gust, blizzard).
+  weather: [
+    { freq: 1800, to: 700, noise: true, start: 0, duration: 0.7, gain: 0.2 },
+    { freq: 392, type: 'triangle', start: 0.1, duration: 0.35, gain: 0.18 },
+    { freq: 330, type: 'triangle', start: 0.3, duration: 0.45, gain: 0.18 },
+  ],
 };

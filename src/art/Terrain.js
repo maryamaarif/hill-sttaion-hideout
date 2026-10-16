@@ -650,7 +650,7 @@ export function addGoal(scene, p, { x, label }, groundY) {
 
 // The guest house itself as the final goal (Winter): warm windows, chimney smoke.
 export function addHouseGoal(scene, season, x, groundY, label) {
-  const p = { ...season.palette, snowRoof: season.palette.groundStyle === 'snow' };
+  const p = { ...season.palette, snowRoof: season.palette.groundStyle === 'snow', decor: season.guestHouse };
   const k = key('house');
   paintTexture(scene, k, 300, 220, (ctx) => guestHouse(ctx, 150, 214, p, 1.55), { outline: 2 });
   trackForCleanup(scene, k);

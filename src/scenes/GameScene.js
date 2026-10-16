@@ -19,7 +19,9 @@ import CrossingSystem from '../systems/CrossingSystem.js';
 import LeafSystem from '../systems/LeafSystem.js';
 import SlopeSystem from '../systems/SlopeSystem.js';
 import BlizzardSystem from '../systems/BlizzardSystem.js';
-import FootprintSystem from '../systems/FootprintSystem.js';
+import TraceSystem from '../systems/TraceSystem.js';
+import NoiseSystem from '../systems/NoiseSystem.js';
+import GuestGroup from '../entities/GuestGroup.js';
 import Hud, { textStyle } from '../ui/Hud.js';
 import PauseMenu from '../ui/PauseMenu.js';
 import Settings from '../systems/Settings.js';
@@ -64,7 +66,7 @@ export default class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.events
         .off('player-enter-water').off('player-dive').off('player-out-of-breath').off('player-launch')
         .off('player-jump').off('player-hide').off('police-suspect').off('police-alarm')
-        .off('player-umbrella').off('rain-start').off('rain-stop'));
+        .off('player-umbrella').off('weather-change').off('police-hear'));
     const { width: W, height: H } = this.scale;
     this.state = 'playing';
     this.lives = new LivesSystem(data.lives);
@@ -112,7 +114,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.heat = new HeatSystem(this, layout.heatZones, this.season.heat, layout.groundY);
     this.cold = new ColdSystem(layout.coldZones, layout.warmSpots, this.season.cold);
-    this.weather = new WeatherSystem(this, this.season.weather);
+    // Season rules you can see and hear: weather event, footstep noise, traces, guests.
+    this.weather = new WeatherSystem(this, this.season.weatherEvent);
+    this.noise = new NoiseSystem(this, this.season.noise, this.audio);
     // Fall outfit: blend into foliage (trees and leaf piles).
     this.foliageXs = [...(layout.trees ?? []), ...(layout.leafPiles ?? []).map((p) => p.x)];
     this.outfitPuff = this.add.particles(0, 0, this.season.wardrobe?.puff?.texture ?? 'puff', {
@@ -130,7 +134,13 @@ export default class GameScene extends Phaser.Scene {
     this.slopes = new SlopeSystem(layout.slopes);
     this.skiZones = layout.skiZones ?? [];
     this.blizzard = new BlizzardSystem(this, layout.blizzardZones, this.season.blizzard);
-    this.footprints = new FootprintSystem(this, layout.footprintZones, this.season.footprints);
+    this.traces = new TraceSystem(this, this.season.traces, layout);
+    this.guests = this.season.guests
+      ? (layout.guests ?? []).map((def) => new GuestGroup(this, def, this.season.guests, {
+        groundAt: this.level.groundAt,
+        swimSurfaceY: this.level.swimWaters[0]?.surfaceY ?? null,
+      }))
+      : [];
     this.meters = new PlayerMeters(this);
 
     this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
@@ -204,6 +214,10 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('player-umbrella', () => this.audio.play('umbrella'));
     this.events.on('police-suspect', () => this.audio.play('suspect'));
     this.events.on('police-alarm', () => this.audio.play('alert'));
+    this.events.on('police-hear', () => this.audio.play('hear'));
+    this.events.on('weather-change', (event, state) => {
+      if (state === 'active') this.audio.play('weather');
+    });
     this.audio.playMusic(this.season.music ?? this.season.key);
 
     // ESC or P: pause menu (Resume, Restart season, Settings, Quit to menu).
@@ -321,6 +335,10 @@ export default class GameScene extends Phaser.Scene {
       this.nextBubbleAt = time + PLAYER.swim.bubbleEveryMs;
     }
 
+    // Guests: walking beside a group blends the player into the crowd.
+    this.guests.forEach((g) => g.update(time, dt));
+    player.inCrowd = playing && !player.hidden && this.guests.some((g) => g.contains(player));
+
     // Wind can expose a player hiding in a leaf pile; passing trains block police vision.
     this.leaves.update(time, player);
     player.exposed = Boolean(player.hidingSpot?.exposed);
@@ -328,16 +346,26 @@ export default class GameScene extends Phaser.Scene {
     const blockers = this.crossings.blockers();
     // Blizzard: fog around the player, shorter police cones; footprints in the snow.
     this.blizzard.update(player);
-    this.footprints.update(time, player);
-    const clues = this.footprints.clues();
+    this.traces.update(time, player);
+    const clues = this.traces.clues();
+    // Footsteps: officers inside the season's noise ring turn to look.
+    if (playing) this.noise.update(time, player, this.police, { quiet: player.inCrowd, runSpeed: this.season.physics.runSpeed });
+    // Weather event: a shower shrinks police cones (umbrellas), a heatwave drains
+    // stamina; gusts and the blizzard are driven by their own systems.
+    this.weather.update(time, player, {
+      gusting: this.leaves.gusting,
+      gustWarning: this.leaves.state === 'warn',
+      inBlizzard: (this.blizzard.intensity ?? 0) > 0.3,
+    });
+    this.police.forEach((officer) => officer.setUmbrella(this.weather.umbrellas));
+    this.hud.setWeather(this.weather.event, this.weather.status(time));
     const baseVisibility = this.season.visibility ?? 1;
     const catcher = this.police.find((officer) => {
       officer.visibility = baseVisibility * this.blizzard.visibilityAt(officer.x) * this.weather.visibility;
       return officer.update(time, delta, player, playing, blockers, clues);
     });
-    const heat = playing ? this.heat.update(dt, player, Boolean(spot)) : null;
+    const heat = playing ? this.heat.update(dt, player, Boolean(spot), this.weather.heat) : null;
     const cold = playing ? this.cold.update(dt, player, Boolean(spot)) : null;
-    this.weather.update(time);
     this.meters.update(player, [
       { kind: 'stamina', value: this.heat.stamina, show: this.heat.active && (this.heat.stamina < 1 || this.heat.standingInSun) },
       { kind: 'breath', value: player.breath, show: player.swimming || player.breath < 1 },
@@ -353,7 +381,7 @@ export default class GameScene extends Phaser.Scene {
     const foliage = this.outfit?.foliage;
     const blending = Boolean(foliage) && !player.hidden && this.foliageXs.some((x) => Math.abs(player.x - x) <= foliage.range);
     player.detectionScale = blending ? foliage.detectionRate : 1;
-    this.hud.setHidden(player.hidden, blending ? 'BLENDING IN' : null);
+    this.hud.setHidden(player.hidden, blending ? 'BLENDING IN' : player.inCrowd ? 'IN THE CROWD' : null);
 
     if (cold === 'warn') this.hud.popup(player.x, player.y - 56, 'Freezing! Find shelter', '#cfe9ff');
     if (heat === 'warn') {
@@ -485,7 +513,9 @@ export default class GameScene extends Phaser.Scene {
       this.heat.reset();
       this.cold.reset();
       this.slopes.reset();
-      this.footprints.reset();
+      this.traces.reset();
+      this.noise.reset();
+      this.weather.reset();
       this.player.skiing = false;
       this.hud.setHidden(false);
       this.state = 'playing';

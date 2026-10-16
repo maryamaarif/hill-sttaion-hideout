@@ -305,13 +305,42 @@ function paintParticles(scene) {
       ctx.fillRect(x - 1, y, 2, 1);
     }
   }, p1);
+  // White so traces can tint it per season (wet prints, deep snow prints).
   paintTexture(scene, 'footprint', 12, 6, (ctx) => {
-    ctx.fillStyle = css(0x6d86a0, 0.85);
+    ctx.fillStyle = css(0xffffff, 0.9);
     ctx.beginPath();
     ctx.ellipse(3, 3, 3, 2, 0, 0, Math.PI * 2);
     ctx.ellipse(9, 2.5, 3, 2, 0, 0, Math.PI * 2);
     ctx.fill();
   }, p1);
+  // Officers' umbrellas in a spring shower.
+  paintTexture(scene, 'police-umbrella', 30, 26, (ctx) => {
+    ctx.strokeStyle = css(0x2a2a2e);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(15, 9);
+    ctx.lineTo(15, 25);
+    ctx.quadraticCurveTo(15, 26.5, 13, 25.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(1, 11);
+    ctx.quadraticCurveTo(15, -5, 29, 11);
+    for (let i = 4; i >= 0; i--) ctx.quadraticCurveTo(1 + i * 7 + 3.5, 8, 1 + i * 7, 11);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, 2, 0, 11);
+    g.addColorStop(0, css(0x4a4f5c));
+    g.addColorStop(1, css(0x1e2028));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = css(0x6a7080, 0.7);
+    ctx.lineWidth = 0.6;
+    for (const x of [8, 15, 22]) {
+      ctx.beginPath();
+      ctx.moveTo(15, 3);
+      ctx.lineTo(x, 10);
+      ctx.stroke();
+    }
+  }, { outline: 1 });
   paintTexture(scene, 'fog-hole', 400, 400, (ctx) => {
     const g = ctx.createRadialGradient(200, 200, 100, 200, 200, 200);
     g.addColorStop(0, css(0xffffff, 1));

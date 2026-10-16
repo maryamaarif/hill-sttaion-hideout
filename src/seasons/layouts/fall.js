@@ -112,6 +112,12 @@ export default {
     { x: 4620, text: "Wind shows what's under the leaves" },
   ],
 
+  // Train passengers out for a walk (season.guests): blend in to slip past.
+  guests: [
+    { from: 2400, to: 3450, count: 3, speed: 42 },
+    { from: 5300, to: 5560, count: 2, speed: 32, startAt: 'to', looks: [1, 2] },
+  ],
+
   hurdles: {
     train: { startX: 260, endX: 3560 },
     tracks: { startX: 3600, endX: 4460 },
