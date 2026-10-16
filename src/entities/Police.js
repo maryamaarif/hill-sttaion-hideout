@@ -1,6 +1,7 @@
 import { DEPTH, POLICE, UI } from '../config/game.js';
 import Settings from '../systems/Settings.js';
-import { buildPoliceLook } from '../art/Character.js';
+import { buildPoliceLook, CHAR_FRAME } from '../art/Character.js';
+import { Shadow } from '../art/Lighting.js';
 import { addOutline } from '../art/TextureFactory.js';
 
 const DEG = Math.PI / 180;
@@ -51,7 +52,9 @@ export default class Police {
     this.look = settings.disguise ?? 'plain';
     buildPoliceLook(scene, this.look, addOutline);
     this.idleTexture = `police-${this.look}-${route.skis ? 'ski' : 'idle'}`;
-    this.sprite = scene.add.sprite(0, groundY, this.idleTexture).setOrigin(0.5, 1).setDepth(DEPTH.police);
+    // Painted at 2×; origin at the feet.
+    this.sprite = scene.add.sprite(0, groundY, this.idleTexture).setOrigin(0.5, CHAR_FRAME.feet / CHAR_FRAME.height).setScale(0.5).setDepth(DEPTH.police);
+    this.shadow = new Shadow(scene, 26);
     this.meter = scene.add.graphics().setDepth(DEPTH.popup);
     this.icon = scene.add
       .text(0, 0, '', {
@@ -259,7 +262,8 @@ export default class Police {
   }
 
   draw() {
-    this.sprite.setPosition(this.x, this.groundY + 2).setFlipX(this.dir < 0);
+    this.sprite.setPosition(this.x, this.groundY + 1).setFlipX(this.dir < 0);
+    this.shadow.follow(this.x, this.groundY + 1, true, this.sprite.visible ? this.sprite.alpha : 0);
 
     // Vision cone: a fan clipped to the ground, warming to red as the meter fills.
     const eye = this.eye();

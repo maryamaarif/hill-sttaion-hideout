@@ -53,8 +53,8 @@ python3 -m http.server 8000
 
 Then open <http://localhost:8000> (or <http://localhost:8000/?demo=1>). Any static web server works.
 
-Phaser 3.80.1 is loaded from a CDN, so the first load needs an internet connection. Progress and settings are saved in your browser (localStorage). If storage is blocked, the game still works for the session.
+Phaser 3.80.1 is loaded from a CDN and the Lora and Nunito fonts from Google Fonts, so the first load needs an internet connection (without the fonts the game falls back to system fonts). Progress and settings are saved in your browser (localStorage). If storage is blocked, the game still works for the session.
 
 ## Made with
 
-Plain HTML and JavaScript with [Phaser 3.80.1](https://phaser.io). Every sprite is drawn in code, and all music and sound is synthesised live with Web Audio, so there are no asset files. See [CREDITS.md](CREDITS.md) for third-party software and licences, and [CLAUDE.md](CLAUDE.md) for the full design and code structure.
+Plain HTML and JavaScript with [Phaser 3.80.1](https://phaser.io). All art is painted in code at runtime in one painterly style shared by every season: gradient skies, five parallax layers with the guest house, the railway viaduct and the lake, textured ground, animated water, seasonal weather, soft lighting and shadows, and fully jointed characters. All music and sound is synthesised live with Web Audio, so there are no asset files. See [CREDITS.md](CREDITS.md) for third-party software and licences, and [CLAUDE.md](CLAUDE.md) for the full design and code structure.

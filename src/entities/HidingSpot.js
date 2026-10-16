@@ -1,5 +1,6 @@
 import { DEPTH } from '../config/game.js';
 import { addActionHint } from '../ui/KeyIcons.js';
+import { addArt, artSize } from '../art/Paint.js';
 
 // A place the player can hide by pressing Down: bush, flower bed, rock overhang,
 // reeds, luggage, the gap between train carriages, a leaf pile, etc. Drawn in
@@ -20,7 +21,7 @@ export default class HidingSpot {
     const baseY = def.y ?? groundY;
     const key = `hide-${kind}-${seasonKey}`;
     const invisible = def.invisible || !scene.textures.exists(key);
-    const tex = invisible ? { width: def.w ?? 40, height: def.h ?? 50 } : scene.textures.get(key).getSourceImage();
+    const tex = invisible ? { width: def.w ?? 40, height: def.h ?? 50 } : artSize(scene, key);
 
     this.kind = kind;
     this.x = x;
@@ -33,10 +34,10 @@ export default class HidingSpot {
       const step = def.w / count;
       for (let i = 0; i < count; i++) {
         const ix = x - def.w / 2 + step * (i + 0.5);
-        this.images.push(scene.add.image(ix, baseY + 2, key).setOrigin(0.5, 1).setDepth(DEPTH.foreground));
+        this.images.push(addArt(scene, ix, baseY + 2, key).setOrigin(0.5, 1).setDepth(DEPTH.foreground));
       }
     } else if (!invisible) {
-      this.images.push(scene.add.image(x, baseY + 2, key).setOrigin(0.5, 1).setDepth(DEPTH.foreground));
+      this.images.push(addArt(scene, x, baseY + 2, key).setOrigin(0.5, 1).setDepth(DEPTH.foreground));
     }
 
     this.width = def.w ?? tex.width * 0.7;

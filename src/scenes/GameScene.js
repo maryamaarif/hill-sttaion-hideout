@@ -2,6 +2,7 @@ import { addScreenText, onKey } from './ui.js';
 import { SEASON_ORDER } from '../seasons/index.js';
 import { CAMERA, DEPTH, EASY, LIVES, PLAYER, RESPAWN } from '../config/game.js';
 import { buildBackdrop } from '../art/Backdrop.js';
+import { applyLighting, Shadow } from '../art/Lighting.js';
 import buildLevel from '../systems/LevelBuilder.js';
 import HurdleSystem from '../systems/HurdleSystem.js';
 import LivesSystem from '../systems/LivesSystem.js';
@@ -73,13 +74,15 @@ export default class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, layout.width, H);
     this.physics.world.setBoundsCollision(true, true, false, false);
 
-    buildBackdrop(this, this.season.palette, layout.width);
+    buildBackdrop(this, this.season, layout.width);
+    applyLighting(this, this.season);
     this.level = buildLevel(this, this.season);
     this.hidingSpots = this.level.hidingSpots;
 
     this.movers = this.level.movers;
     this.player = new Player(this, layout.spawn.x, layout.spawn.y, this.season);
     if (this.outfit) this.player.setOutfit(this.outfit);
+    this.playerShadow = new Shadow(this, 28);
     this.physics.add.collider(this.player, this.level.solids);
     this.physics.add.collider(this.player, this.movers.flatMap((m) => m.zones));
     this.physics.add.overlap(this.player, this.level.obstacles, () =>
@@ -142,12 +145,36 @@ export default class GameScene extends Phaser.Scene {
       onClear: (i, h) => this.clearHurdle(i, h),
     });
 
-    if (this.season.ambient) {
-      const { texture, ...emitter } = this.season.ambient;
+    // Weather particles: the season's main ambient layer plus extras (summer dust).
+    for (const ambient of [this.season.ambient, ...(this.season.ambientExtra ?? [])].filter(Boolean)) {
+      const { texture, ...emitter } = ambient;
       this.add
         .particles(0, -10, texture, { x: { min: 0, max: W }, ...emitter })
         .setScrollFactor(0)
         .setDepth(DEPTH.ambient);
+    }
+    // Breath vapour in the cold (season.breath): a small puff from the mouth.
+    if (this.season.breath) {
+      // One emitter per facing direction (puffs drift the way the guest faces).
+      const puffs = (dir) => this.add.particles(0, 0, 'puff', {
+        speedX: { min: 10 * dir, max: 26 * dir },
+        speedY: { min: -14, max: -4 },
+        scale: { start: 0.12, end: 0.55 },
+        alpha: { start: 0.55, end: 0 },
+        lifespan: 1100,
+        emitting: false,
+      }).setDepth(DEPTH.player + 1);
+      this.breath = { 1: puffs(1), [-1]: puffs(-1) };
+      this.time.addEvent({
+        delay: this.season.breath.everyMs,
+        loop: true,
+        callback: () => {
+          const pl = this.player;
+          if (!pl?.visible || pl.swimming || pl.hidden) return;
+          const dir = pl.flipX ? -1 : 1;
+          this.breath[dir].explode(3, pl.x + 6 * dir, pl.body.top + 6);
+        },
+      });
     }
     this.splash = this.add.particles(0, 0, 'droplet', {
       speed: { min: 90, max: 220 },
@@ -286,6 +313,7 @@ export default class GameScene extends Phaser.Scene {
     player.nearSpot = playing ? (spot ?? null) : null;
     player.water = this.level.swimWaters.find((w) => player.x >= w.x && player.x <= w.x + w.w) ?? null;
     player.update(time, delta);
+    this.playerShadow.follow(player.x, player.body.bottom, player.onGround && !player.swimming, player.visible && !player.swimming);
     this.cameras.main.followOffset.x = player.flipX ? CAMERA.lookAheadX : -CAMERA.lookAheadX;
 
     if (player.submerged && time >= this.nextBubbleAt) {
@@ -443,7 +471,7 @@ export default class GameScene extends Phaser.Scene {
       this.time.delayedCall(250, () => this.audio.play('gameOver'));
       this.cameras.main.fadeOut(900);
       const { level, items, hidingPlaces } = this.run;
-      this.time.delayedCall(1000, () => this.scene.start('GameOverScene', { level, reason, items, hidingPlaces }));
+      this.time.delayedCall(1000, () => this.scene.start('GameOverScene', { level, reason, items, hidingPlaces, seasonKey: this.season.key }));
       return;
     }
 

@@ -17,7 +17,7 @@ This file is the source of truth for the game design and code conventions. Every
 ## Judging and deployment
 - **Live build**: GitHub Pages from `main` (root) at <https://maryamaarif.github.io/hill-sttaion-hideout/>. `.nojekyll` keeps Pages from processing files. Every path is relative and every import matches its file name's case exactly (Pages is case-sensitive, macOS is not).
 - **`?demo=1`** (hidden): tops coins up to `DEMO.coins` at boot so judges can try the shop ("Your room" on the title screen).
-- **Credits**: `CREDITS.md` and the in-game Credits screen (`src/config/credits.js`) list all third-party software (Phaser 3.80.1, MIT, via jsDelivr; system fonts; system emoji). Keep both in step when adding anything third-party. All art and audio are made in code by the team.
+- **Credits**: `CREDITS.md` and the in-game Credits screen (`src/config/credits.js`) list all third-party software (Phaser 3.80.1, MIT, via jsDelivr; Lora and Nunito from Google Fonts, SIL OFL 1.1; system emoji). Keep both in step when adding anything third-party. All art and audio are made in code by the team.
 - Level 1 target: about 4–6 minutes for a first-time player, no dead ends: every failure respawns at the hurdle start, and moving platforms and trains reset with it.
 
 ## Tech rules
@@ -87,7 +87,7 @@ Player meters (stamina and breath) float above the player's head only while they
 **Seasons must change the RULES, not just the visuals.** Movement, friction, visibility, hazards and hiding spots differ per season. Each season's config file in `src/seasons/` declares these differences.
 
 ### Seasonal wardrobe (clothes change the rules)
-- The player is a **layered character** (`src/art/Character.js`): body, bottom, shoes, top, accessories, hat. Each layer has drawers per style and follows the same pose geometry, so every outfit has every pose: idle, run (walk1/walk2), jump, fall, crouch/hide, caught, ski, skiAir, glide. An outfit is baked to `pl-<outfitId>-<pose>` textures; changing clothes just switches the prefix.
+- The player is a **layered character** (`src/art/Character.js`): body, bottom, shoes, top, accessories, hat. Each layer has drawers per style and follows the same pose geometry, so every outfit has every pose: idle/idle2 (breathing), run1–run6, walk1–walk4, jump, fall, crouch/hide, caught, ski, skiAir, glide. An outfit is baked to `pl-<outfitId>-<pose>` textures; changing clothes just switches the prefix.
 - Outfits are **data in each season config** (`wardrobe`): `outfit` (default), `variants` (shop), `swaps` (per-hurdle changes), `puff` (particles for the change). `resolveOutfit` in `src/systems/Wardrobe.js` merges them.
   - **Spring**: raincoat, jeans, rubber boots, umbrella. Hold the glide key (↑) in the air to float (`ability: 'umbrella'`). Rain showers (`weather.rain`) shorten police vision.
   - **Summer**: t-shirt, shorts, sneakers, sun hat, sunglasses: fastest run (`effects`). Swaps to a life jacket on the canoe hurdle and swimsuit + goggles on the swim.
@@ -119,10 +119,15 @@ Player meters (stamina and breath) float above the player's head only while they
 - Right: coin icon + saved coin total.
 
 ### Art style (one style for everything)
-- **Simple flat shapes**, drawn in code (`src/art/`), no image files and no gradients on sprites.
-- **Play layer** (player, police, hiding spots, vehicles, trees, props) has a **soft 1px outline in the shared ink** `INK = 0x3b2a20` (added automatically by `TextureFactory` to textures whose key matches `OUTLINED`). The **parallax background is flat with no outline**, so it reads as distance.
-- **Each season has its own palette** in its season config (`palette`); the shapes, proportions and line style are shared. New textures draw from the palette, never hard-coded season colours.
-- **UI** uses the same ink for panel borders and text strokes, the `UI.font`, cream panels `0xfff4e6`, gold highlight `0xffd54f`, and `UI.screenBg` behind menu-style screens. Text uses `textStyle()` from `src/ui/Hud.js`.
+- **Painterly 2D**: soft gradients, shaded volumes, grain and speckle, all **painted in code** with the Canvas 2D API (`src/art/Paint.js`). No image files.
+- **Textures are painted at 2× (`ART_SCALE`) and shown at half size** (`addArt`, or `setScale(0.5)`; sizes in logical pixels via `artSize`). Characters use `CHAR_FRAME` (40×64, feet at y 60): sprites `setScale(0.5)`, origin at the feet.
+- **Static art is painted once per scene and cached** (`paintTexture`, `paintChunks` for big layers; per-run keys are freed on shutdown). Nothing static is redrawn per frame.
+- **Play layer** (player, police, hiding spots, vehicles, trees, props) has a **soft anti-aliased ink outline** `INK = 0x3b2a20` (`paintTexture(..., { outline })`). The **parallax background has no outline** and fades into atmospheric haze, so it reads as distance.
+- **Environment** (`Backdrop.js`, `Terrain.js`): sky gradient with sun glow and soft clouds; five parallax layers (mountains, far forest, mid hills with the guest house, viaduct, lake/jetty or ski lift; near trees, fences, benches, lamps; foreground grass in front of the player); one chunked terrain layer with textured ground edges by `palette.groundStyle` (`grass`, `dry`, `snow`); animated water (ripples, shimmer, glints).
+- **Lighting** (`Lighting.js`, `season.lighting`): sun wash + bloom halo (additive), colour tint (multiply), vignette, and soft contact shadows under characters. All cached overlays, no camera postFX (a postFX pass greys the image). Spring soft and fresh, Summer bright, Fall warm golden, Winter cool blue.
+- **Weather**: `ambient` (+ `ambientExtra`) particles per season (petals and rain, seeds and dust, leaves and gusts, snow), `breath` vapour in Winter.
+- **Each season has its own palette** in its season config (`palette`); shapes, proportions and painting style are shared. New art draws from the palette, never hard-coded season colours.
+- **UI**: rounded wooden nine-slice panels (`src/ui/Panels.js`: `wood`, `paper`, `plank`, `key`), golden tint for the selected item (`setHot`), wooden HUD plaques. Fonts from Google Fonts: **Lora** for titles, **Nunito** for numbers and text (`UI.titleFont`, `UI.font`; `textStyle()` picks Lora from `UI.titleMinSize` up). `main.js` waits up to 2.5 s for them, then falls back to system fonts.
 - The player's own (home) look is the navy coat, red scarf and brown hat (room, menus); in the seasons they wear the season outfit. Police always keep the mirrored sunglasses and earpiece.
 
 ### Audio (Web Audio only, no files)
@@ -198,11 +203,13 @@ src/systems/            LevelBuilder (layout → terrain/hazards/triggers), Hurd
                         Settings (cached settings, controls, change events),
                         LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
-src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax),
-                        Room (the hub room, drawn from owned upgrades)
+src/art/                Paint (painting toolkit), TextureFactory (sprites, props, particles, UI),
+                        Character (skeleton characters + outfits), Backdrop (parallax),
+                        Terrain (ground, platforms, water, signs, goals), Lighting,
+                        Room (the hub room, painted from owned upgrades)
 src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects),
                         SettingsPanel (volumes, mute, shake, colour-blind, easy, controls),
-                        PauseMenu (resume, restart season, settings, quit), KeyIcons,
+                        PauseMenu (resume, restart season, settings, quit), KeyIcons, Panels,
                         PlayerMeters (stamina/breath bars above the player)
 src/systems/RunState.js newLevelRun(): the run data passed between scenes
 src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)
@@ -220,7 +227,7 @@ assets/                 images, audio (add when needed)
 - Run state (current level, season index, lives, coins, elapsed time) is passed between scenes via `scene.start(key, data)`; persistent state (coins, unlocks) goes through `SaveSystem` (localStorage, wrapped in try/catch).
 - Season configs are data; `GameScene` reads the current season config and builds the stage from it, so adding/tuning a season never requires editing the scene.
 - Keep modules small and focused; one class per file in `entities/` and `systems/`.
-- Art is drawn in code from the season palette (no image files yet). Keep the look consistent: soft pastel shapes, dark-brown outlined text, the player in a navy coat, red scarf and brown hat.
+- Art is painted in code from the season palette (no image files). Keep the look consistent (see Art style): painterly shading, ink outlines on the play layer, dark-brown outlined text, the player at home in a navy coat, red scarf and brown hat.
 - A season without a `layout` shows a placeholder screen (press N to finish), so the full flow always runs.
 - `window.__game` and `window.__audio` expose the Phaser game and the audio engine for debugging/automated playtests. Set `DEBUG.physics` in `src/config/game.js` to see bodies and trigger zones.
 

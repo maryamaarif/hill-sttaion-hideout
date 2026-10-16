@@ -9,6 +9,7 @@ import { newLevelRunFromSave } from '../systems/RunState.js';
 import SaveSystem from '../systems/SaveSystem.js';
 import AudioSystem from '../systems/AudioSystem.js';
 import SettingsPanel from '../ui/SettingsPanel.js';
+import { addPanel, setHot } from '../ui/Panels.js';
 
 const SEASON_MS = 3500; // each season shows this long before the next fades in
 const FADE_MS = 1200;
@@ -28,7 +29,7 @@ export default class MenuScene extends Phaser.Scene {
 
     // One backdrop (hills, guest house, trees) and particle emitter per season.
     this.seasons = SEASON_ORDER.map((season, i) => {
-      const layers = buildBackdrop(this, season.palette, W);
+      const layers = buildBackdrop(this, season, W);
       const { texture, ...cfg } = season.ambient;
       const particles = this.add.particles(0, -10, texture, { x: { min: 0, max: W }, ...cfg }).setDepth(DEPTH.ambient);
       if (i > 0) {
@@ -82,7 +83,7 @@ export default class MenuScene extends Phaser.Scene {
       return o;
     };
     add(this.add.rectangle(0, 0, W, H, 0x1d2b3a, 0.65).setOrigin(0).setInteractive());
-    add(this.add.rectangle(W / 2, H / 2, 560, 380, 0xfff4e6).setStrokeStyle(4, INK));
+    add(addPanel(this, W / 2, H / 2, 560, 380, 'paper'));
     let y = H / 2 - 160;
     for (const c of CREDITS) {
       if (c.heading) {

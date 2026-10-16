@@ -7,16 +7,9 @@ import SaveSystem from '../systems/SaveSystem.js';
 import { resolveOutfit, equippedId } from '../systems/Wardrobe.js';
 import { buildOutfit } from '../art/Character.js';
 import { addOutline } from '../art/TextureFactory.js';
+import { addPanel, setHot } from '../ui/Panels.js';
+import { buildBackdrop } from '../art/Backdrop.js';
 
-const { Color } = Phaser.Display;
-const mix = (a, b, t) => {
-  const c = Color.Interpolate.ColorWithColor(Color.IntegerToColor(a), Color.IntegerToColor(b), 100, t * 100);
-  return Color.GetColor(c.r, c.g, c.b);
-};
-
-// Between seasons: a short animated change (the old season's particles and icon
-// give way to the next season's), the lives carried forward, then a choice of one
-// perk for the next season. ENTER skips the animation.
 export default class SeasonTransitionScene extends Phaser.Scene {
   constructor() {
     super('SeasonTransitionScene');
@@ -34,7 +27,11 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     const T = TRANSITION;
 
     // Sky and a strip of ground that blend from the old season's colours to the new.
-    this.bg = this.add.graphics();
+    // Painted backdrops of both seasons; the new one fades in over the old.
+    const backdrop = (season) => buildBackdrop(this, season, W).map((o) => (o.depth > -20 ? o.setDepth(-20) : o));
+    this.prevLayers = backdrop(this.prev);
+    this.nextLayers = this.next === this.prev ? [] : backdrop(this.next);
+    this.add.rectangle(0, 0, W, H, 0x1d2b3a, 0.32).setOrigin(0).setDepth(-19); // keep text readable
     this.drawBackground();
     this.tweens.add({ targets: this.blend, t: 1, delay: T.swapMs, duration: T.blendMs, onUpdate: () => this.drawBackground() });
 
@@ -52,10 +49,10 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     });
 
     // Old icon spins away; new icon pops in.
-    const prevIcon = this.add.image(W / 2, H / 2 - 120, `icon-${this.prev.key}`).setScale(3);
+    const prevIcon = this.add.image(W / 2, H / 2 - 120, `icon-${this.prev.key}`).setScale(1.5);
     const nextIcon = this.add.image(W / 2, H / 2 - 120, `icon-${this.next.key}`).setScale(0);
     this.tweens.add({ targets: prevIcon, scale: 0, angle: 180, alpha: 0, delay: T.swapMs - 200, duration: 400 });
-    this.tweens.add({ targets: nextIcon, scale: 3, delay: T.swapMs + 200, duration: 500, ease: 'Back.out' });
+    this.tweens.add({ targets: nextIcon, scale: 1.5, delay: T.swapMs + 200, duration: 500, ease: 'Back.out' });
 
     this.outfitChange(T);
 
@@ -100,7 +97,7 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     buildOutfit(this, after, addOutline);
     const x = 140;
     const y = H / 2 + 76;
-    const guest = this.add.image(x, y, `pl-${before.id}-idle`).setOrigin(0.5, 1).setScale(3);
+    const guest = this.add.image(x, y, `pl-${before.id}-idle`).setOrigin(0.5, 60 / 64).setScale(1.5);
     const puff = (season) =>
       this.add.particles(x, y - 80, season.wardrobe?.puff?.texture ?? 'puff', {
         speed: { min: 80, max: 220 },
@@ -125,9 +122,9 @@ export default class SeasonTransitionScene extends Phaser.Scene {
             guest.setTexture(`pl-${after.id}-idle`);
             puff(this.next).explode(36);
           } },
-          { scaleX: -3, duration: 120, ease: 'Sine.out' },
+          { scaleX: -1.5, duration: 120, ease: 'Sine.out' },
           { scaleX: 0, duration: 110, ease: 'Sine.in' },
-          { scaleX: 3, duration: 110, ease: 'Sine.out' },
+          { scaleX: 1.5, duration: 110, ease: 'Sine.out' },
         ],
       });
       this.tweens.add({ targets: blurb, alpha: 1, delay: 500, duration: 400 });
@@ -136,17 +133,7 @@ export default class SeasonTransitionScene extends Phaser.Scene {
   }
 
   drawBackground() {
-    const { width: W, height: H } = this.scale;
-    const t = this.blend.t;
-    const a = this.prev.palette;
-    const b = this.next.palette;
-    const top = mix(a.skyTop, b.skyTop, t);
-    const bottom = mix(a.skyBottom, b.skyBottom, t);
-    this.bg.clear();
-    this.bg.fillGradientStyle(top, top, bottom, bottom, 1).fillRect(0, 0, W, H);
-    this.bg.fillStyle(0x1d2b3a, 0.35).fillRect(0, 0, W, H); // keep text readable
-    this.bg.fillStyle(mix(a.dirt, b.dirt, t)).fillRect(0, H - 50, W, 50);
-    this.bg.fillStyle(mix(a.grass, b.grass, t)).fillRect(0, H - 56, W, 12);
+    this.nextLayers.forEach((o) => o.setAlpha(this.blend.t));
   }
 
   // Shown when the intro ends, or straight away if the player presses ENTER.
@@ -170,7 +157,7 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     this.cards = this.perks.map((perk, i) => {
       const x = W / 2 + (i - (this.perks.length - 1) / 2) * gap;
       const y = H - 116;
-      const bg = this.add.rectangle(x, y + 30, 248, 116, 0xfff4e6).setStrokeStyle(4, 0x3b2a20);
+      const bg = addPanel(this, x, y + 30, 248, 116, 'paper');
       const icon = this.add.text(x, y - 6, perk.icon, { fontSize: '28px' }).setOrigin(0.5);
       const name = this.add.text(x, y + 26, perk.name, { fontFamily: UI.font, fontSize: '20px', color: '#3b2a20', fontStyle: 'bold' }).setOrigin(0.5);
       const desc = this.add
@@ -198,8 +185,8 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     if (this.selected >= 0 && next !== this.selected) this.audio.play('select');
     this.selected = next;
     this.cards.forEach(({ bg }, j) => {
-      bg.setFillStyle(j === next ? 0xffd54f : 0xfff4e6);
-      bg.setStrokeStyle(j === next ? 6 : 4, 0x3b2a20);
+      setHot(bg, j === next);
+      bg.setPanelScale(j === next ? 1.04 : 1);
     });
   }
 

@@ -10,6 +10,7 @@ import { allOutfits, equippedId, resolveOutfit } from '../systems/Wardrobe.js';
 import { SEASON_ORDER } from '../seasons/index.js';
 import { buildOutfit } from '../art/Character.js';
 import { addOutline } from '../art/TextureFactory.js';
+import { addPanel, setHot } from '../ui/Panels.js';
 
 const ROOM_AREA = { x: 16, y: 58, w: 560, h: 466 };
 const PANEL = { x: 592, y: 58, w: 352, h: 420 };
@@ -65,7 +66,7 @@ export default class HubScene extends Phaser.Scene {
 
     this.add.text(16, 14, 'Your room at the guest house', textStyle(26)).setOrigin(0, 0);
     this.coinText = this.add.text(W - 16, 28, '', textStyle(24, { color: '#ffd54f' })).setOrigin(1, 0.5);
-    this.coinIcon = this.add.image(0, 28, 'coin').setScale(1.2);
+    this.coinIcon = this.add.image(0, 28, 'coin').setScale(0.6);
 
     this.room = null;
     this.drawRoom();
@@ -95,10 +96,10 @@ export default class HubScene extends Phaser.Scene {
 
   buildPanel() {
     const { x, y, w, h } = PANEL;
-    this.add.rectangle(x, y, w, h, 0xfff4e6).setOrigin(0).setStrokeStyle(4, 0x3b2a20);
+    addPanel(this, x, y, w, h, 'paper').setOrigin(0);
     const tabW = w / TABS.length;
     this.tabButtons = TABS.map((t, i) => {
-      const bg = this.add.rectangle(x + i * tabW, y, tabW, 40, 0xe8d3b0).setOrigin(0).setStrokeStyle(3, 0x3b2a20);
+      const bg = addPanel(this, x + i * tabW, y, tabW, 40, 'plank').setOrigin(0);
       const label = this.add.text(x + i * tabW + tabW / 2, y + 20, t.label, this.ink(18, true)).setOrigin(0.5);
       bg.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.setTab(i));
       return { bg, label };
@@ -127,14 +128,14 @@ export default class HubScene extends Phaser.Scene {
   buildButtons() {
     const y = 506;
     const make = (x, w, label, action, primary = false) => {
-      const bg = this.add.rectangle(x, y, w, 40, primary ? 0xffd54f : 0xfff4e6).setStrokeStyle(4, 0x3b2a20);
-      const text = this.add.text(x, y, label, this.ink(primary ? 19 : 16, primary)).setOrigin(0.5);
+      const bg = setHot(addPanel(this, x, y, w, 40, 'plank'), primary);
+      const text = this.add.text(x, y, label, this.ink(primary ? 17 : 16, primary)).setOrigin(0.5);
       bg.setInteractive({ useHandCursor: true }).on('pointerdown', action);
       return text;
     };
     make(PANEL.x + 56, 104, 'Menu (Esc)', () => this.scene.start('MenuScene'));
     make(PANEL.x + 172, 116, 'Settings', () => this.settingsPanel.open());
-    make(PANEL.x + 290, 124, `Level ${this.level} ▶ (N)`, () => this.nextLevel(), true);
+    make(PANEL.x + 292, 132, `Level ${this.level} ▶ (N)`, () => this.nextLevel(), true);
   }
 
   setTab(i) {
@@ -184,7 +185,7 @@ export default class HubScene extends Phaser.Scene {
     this.coinText.setText(String(this.save.coins));
     this.coinIcon.setX(W - 16 - this.coinText.width - 18);
 
-    this.tabButtons.forEach(({ bg }, i) => bg.setFillStyle(i === this.tab ? 0xffd54f : 0xe8d3b0));
+    this.tabButtons.forEach(({ bg }, i) => setHot(bg, i === this.tab));
     const outfits = tab.list === 'ownedOutfits';
     this.rows.forEach((r, i) => {
       const index = this.scroll + i;

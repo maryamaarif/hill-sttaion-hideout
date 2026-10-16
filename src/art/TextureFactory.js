@@ -1,439 +1,798 @@
 import { buildOutfit, buildPoliceLook, HOME_OUTFIT } from './Character.js';
+import {
+  paintTexture, outlineCanvas, css, shade, seeded, radialGlow, roundRect, contactShadow, puffy, pine, vGradient, speckle,
+} from './Paint.js';
 
-// Every sprite is drawn in code with Graphics and baked into a texture once.
-// Common textures (player, hearts, particles) are made in BootScene;
-// season textures (trees, bushes) are made per season from its palette.
+// Every texture is painted in code (see Paint.js), once, and cached by key.
+//
+// ART STYLE (one style for all four seasons): painterly shapes with soft gradients,
+// light from the upper left, shaded undersides, and a soft ink outline on everything
+// the player interacts with (characters, hiding spots, vehicles, trees, props). The
+// parallax background has no outline and fades into atmospheric haze. Each season
+// only changes the palette.
+//   Common textures (characters, UI, particles, vehicles): createCommonTextures.
+//   Season textures (trees, hiding spots): createSeasonTextures, from the palette.
 
-// ART STYLE: simple flat shapes, no gradients on sprites. Everything in the play
-// layer (characters, police, hiding spots, vehicles, trees) gets a soft 1px outline
-// in the shared ink colour; the parallax background stays flat with no outline, so
-// it reads as distance. UI uses the same ink for borders and text strokes.
 export const INK = 0x3b2a20;
-const OUTLINED = /^(pl-|police-|mover-|train-|crossing-train|hide-|tree-)/;
-const OUTLINE_ALPHA = 0.7;
 
-function makeTexture(scene, key, width, height, draw) {
-  if (scene.textures.exists(key)) return;
-  const g = scene.make.graphics({ x: 0, y: 0 }, false);
-  draw(g);
-  g.generateTexture(key, width, height);
-  g.destroy();
-  if (OUTLINED.test(key)) addOutline(scene, key);
-}
-
-// Soft outline: ink is laid underneath every see-through edge pixel that touches
-// a solid one (so antialiased edges get a continuous line, not a dotted one).
+// Kept for callers that outline a texture they painted themselves.
 export function addOutline(scene, key) {
   const tex = scene.textures.get(key);
   const canvas = tex.getSourceImage();
-  if (!(canvas instanceof HTMLCanvasElement)) return;
-  const ctx = canvas.getContext('2d');
-  const { width: w, height: h } = canvas;
-  const img = ctx.getImageData(0, 0, w, h);
-  const src = img.data;
-  const out = new Uint8ClampedArray(src);
-  const solid = (x, y) => x >= 0 && y >= 0 && x < w && y < h && src[(y * w + x) * 4 + 3] >= 200;
-  const ink = [(INK >> 16) & 0xff, (INK >> 8) & 0xff, INK & 0xff];
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      const a = src[i + 3] / 255;
-      if (a >= 200 / 255) continue;
-      if (!(solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1))) continue;
-      // Existing pixel composited over the ink.
-      const inkA = OUTLINE_ALPHA * (1 - a);
-      const outA = a + inkA;
-      for (let c = 0; c < 3; c++) out[i + c] = (src[i + c] * a + ink[c] * inkA) / outA;
-      out[i + 3] = outA * 255;
-    }
+  if (canvas instanceof HTMLCanvasElement) {
+    outlineCanvas(canvas, 2);
+    tex.refresh?.();
   }
-  ctx.putImageData(new ImageData(out, w, h), 0, 0);
-  tex.refresh();
 }
 
-// Heart in a 22×20 frame, optionally shrunk toward its centre (for inner fills).
-function drawHeart(g, color, scale = 1) {
-  const p = (x, y) => [11 + (x - 11) * scale, 10 + (y - 10) * scale];
-  g.fillStyle(color);
-  g.fillCircle(...p(6, 7), 5.5 * scale);
-  g.fillCircle(...p(16, 7), 5.5 * scale);
-  g.fillTriangle(...p(1, 9), ...p(21, 9), ...p(11, 19));
+export const seededRandom = seeded;
+
+// ----- shared shapes -----
+
+function heart(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.3);
+  ctx.bezierCurveTo(x, y, x - s * 0.5, y - s * 0.05, x - s * 0.5, y + s * 0.3);
+  ctx.bezierCurveTo(x - s * 0.5, y + s * 0.6, x, y + s * 0.75, x, y + s);
+  ctx.bezierCurveTo(x, y + s * 0.75, x + s * 0.5, y + s * 0.6, x + s * 0.5, y + s * 0.3);
+  ctx.bezierCurveTo(x + s * 0.5, y - s * 0.05, x, y, x, y + s * 0.3);
+  ctx.closePath();
 }
 
-// Small seeded random so procedural art is identical every run.
-export function seededRandom(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
+export function woodGrain(ctx, x, y, w, h, base, rnd, lines = 10) {
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, css(shade(base, 1.15)));
+  g.addColorStop(1, css(shade(base, 0.85)));
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  ctx.lineWidth = 0.6;
+  for (let i = 0; i < lines; i++) {
+    const yy = y + rnd() * h;
+    ctx.strokeStyle = css(shade(base, 0.7 + rnd() * 0.15), 0.5);
+    ctx.beginPath();
+    ctx.moveTo(x, yy);
+    ctx.bezierCurveTo(x + w * 0.3, yy + (rnd() - 0.5) * 3, x + w * 0.7, yy + (rnd() - 0.5) * 3, x + w, yy + (rnd() - 0.5) * 2);
+    ctx.stroke();
+  }
 }
 
-export function createCommonTextures(scene) {
-  // Characters are layered and baked per outfit (src/art/Character.js).
-  buildOutfit(scene, HOME_OUTFIT, addOutline);
-  buildPoliceLook(scene, 'plain', addOutline);
+// Rounded UI panel (nine-slice source): wood frame, optionally with a parchment inset.
+function uiPanel(ctx, w, h, { base, edge, inner = null, r = 12, rnd, lines = 16 }) {
+  roundRect(ctx, 1, 2, w - 2, h - 2, r);
+  ctx.fillStyle = css(0x000000, 0.25);
+  ctx.fill();
+  roundRect(ctx, 1, 0, w - 2, h - 3, r);
+  ctx.save();
+  ctx.clip();
+  woodGrain(ctx, 0, 0, w, h, base, rnd, lines);
+  if (inner) {
+    roundRect(ctx, 6, 6, w - 12, h - 15, r - 5);
+    const g = ctx.createLinearGradient(0, 6, 0, h - 9);
+    g.addColorStop(0, css(shade(inner, 1.06)));
+    g.addColorStop(1, css(shade(inner, 0.93)));
+    ctx.fillStyle = g;
+    ctx.fill();
+    speckle(ctx, 6, 6, w - 12, h - 15, [shade(inner, 0.85)], 30, rnd, [0.3, 0.8], 0.4);
+  }
+  ctx.restore();
+  roundRect(ctx, 1, 0, w - 2, h - 3, r);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = css(edge);
+  ctx.stroke();
+  roundRect(ctx, 3, 2, w - 6, h - 7, r - 2);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = css(0xffffff, 0.25);
+  ctx.stroke();
+}
 
-  // Summer outfit puff, Spring rain.
-  makeTexture(scene, 'sparkle', 10, 10, (g) => {
-    g.fillStyle(0xfff27a).fillTriangle(5, 0, 6.5, 5, 3.5, 5).fillTriangle(5, 10, 6.5, 5, 3.5, 5);
-    g.fillTriangle(0, 5, 5, 3.5, 5, 6.5).fillTriangle(10, 5, 5, 3.5, 5, 6.5);
-  });
-  makeTexture(scene, 'raindrop', 3, 12, (g) => {
-    g.fillStyle(0xcfe6ff, 0.9).fillRect(1, 0, 1, 12);
-  });
+function wheel(ctx, x, y, r, rim) {
+  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 1, x, y, r);
+  g.addColorStop(0, css(shade(rim, 1.3)));
+  g.addColorStop(1, css(shade(rim, 0.7)));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = css(0x1e1a1a);
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * r * 0.85, y + Math.sin(a) * r * 0.85);
+    ctx.stroke();
+  }
+  ctx.fillStyle = css(0x1e1a1a);
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+}
 
-  // Winter: snowflakes, boot prints, and a soft brush that cuts the blizzard fog.
-  makeTexture(scene, 'snowflake', 6, 6, (g) => {
-    g.fillStyle(0xffffff).fillCircle(3, 3, 2.5);
-  });
-  makeTexture(scene, 'footprint', 12, 6, (g) => {
-    g.fillStyle(0x7d93a8).fillEllipse(3, 3, 6, 4);
-    g.fillEllipse(9, 2, 6, 4);
-  });
-  makeTexture(scene, 'fog-hole', 400, 400, (g) => {
-    // Overlapping circles build a soft edge: fully clear in the middle.
-    for (let r = 200; r > 0; r -= 8) g.fillStyle(0xffffff, 0.09).fillCircle(200, 200, r);
-    g.fillStyle(0xffffff).fillCircle(200, 200, 110);
-  });
+// ----- common textures -----
 
-  makeTexture(scene, 'heart-full', 22, 20, (g) => drawHeart(g, 0xe84a5f));
-  // Empty slot: dark outline, pale fill. Readable on light skies and dark menus.
-  makeTexture(scene, 'heart-empty', 22, 20, (g) => {
-    drawHeart(g, 0x3b2a20);
-    drawHeart(g, 0xe9dfe6, 0.72);
+function paintHud(scene) {
+  paintTexture(scene, 'heart-full', 22, 20, (ctx) => {
+    heart(ctx, 11, 1.5, 17);
+    const g = ctx.createRadialGradient(8, 6, 1, 11, 10, 12);
+    g.addColorStop(0, css(0xff8a8a));
+    g.addColorStop(0.5, css(0xe03a4e));
+    g.addColorStop(1, css(0x9e1c30));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = css(INK);
+    ctx.stroke();
+    ctx.fillStyle = css(0xffffff, 0.7);
+    ctx.beginPath();
+    ctx.ellipse(7, 6, 2.4, 1.4, -0.5, 0, Math.PI * 2);
+    ctx.fill();
   });
-
-  makeTexture(scene, 'petal', 9, 6, (g) => {
-    g.fillStyle(0xf8b8d0).fillEllipse(4.5, 3, 9, 5);
-    g.fillStyle(0xfde0eb).fillEllipse(3.5, 2.5, 4, 2);
+  paintTexture(scene, 'heart-empty', 22, 20, (ctx) => {
+    heart(ctx, 11, 1.5, 17);
+    ctx.fillStyle = css(0xe9dfe6, 0.55);
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = css(INK);
+    ctx.stroke();
   });
-  makeTexture(scene, 'droplet', 6, 6, (g) => {
-    g.fillStyle(0xd8f3ff).fillCircle(3, 3, 3);
-  });
-  makeTexture(scene, 'bubble', 8, 8, (g) => {
-    g.lineStyle(1.5, 0xe8fbff).strokeCircle(4, 4, 3);
-    g.fillStyle(0xffffff).fillCircle(3, 3, 1);
-  });
-  makeTexture(scene, 'seed', 10, 10, (g) => {
-    g.lineStyle(1, 0xffffff, 0.9);
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      g.lineBetween(5, 5, 5 + Math.cos(a) * 4.5, 5 + Math.sin(a) * 4.5);
-    }
-    g.fillStyle(0xfff6c8).fillCircle(5, 5, 1.5);
-  });
-  // A soft vertical wobble of light: rises off hot ground.
-  makeTexture(scene, 'shimmer', 10, 40, (g) => {
-    for (let y = 0; y < 40; y += 2) {
-      const x = 5 + Math.sin(y * 0.4) * 3;
-      g.fillStyle(0xffffff, 0.5 * Math.sin((y / 40) * Math.PI)).fillRect(x - 1, y, 2, 2);
-    }
-  });
-
-  // Moving platforms. Canoe rim sits above its deck so the rider's feet are inside.
-  makeTexture(scene, 'mover-canoe', 130, 30, (g) => {
-    g.fillStyle(0xb8341f).fillPoints([{ x: 0, y: 2 }, { x: 14, y: 8 }, { x: 116, y: 8 }, { x: 130, y: 2 }, { x: 116, y: 28 }, { x: 14, y: 28 }], true);
-    g.fillStyle(0xe8553b).fillPoints([{ x: 4, y: 5 }, { x: 16, y: 10 }, { x: 114, y: 10 }, { x: 126, y: 5 }, { x: 114, y: 25 }, { x: 16, y: 25 }], true);
-    g.fillStyle(0xffd23f).fillRect(16, 16, 98, 3);
-    g.fillStyle(0x7a2414).fillRect(14, 8, 102, 3);
-    g.fillStyle(0x8a5a2e).fillRect(40, 9, 4, 4);
-    g.fillRect(86, 9, 4, 4);
-  });
-  // Vintage steam train (Fall). Carriage roof = top of the texture; wheels sit on the rail.
-  makeTexture(scene, 'train-carriage', 150, 90, (g) => {
-    g.fillStyle(0x3a2a2a).fillRoundedRect(0, 0, 150, 10, 4); // roof
-    g.fillStyle(0x7a1f2b).fillRect(2, 8, 146, 62); // maroon body
-    g.fillStyle(0xd9a441).fillRect(2, 14, 146, 3); // gold lining
-    g.fillRect(2, 60, 146, 3);
-    for (let wx = 12; wx < 140; wx += 32) {
-      g.fillStyle(0xf6e7c1).fillRoundedRect(wx, 22, 22, 26, 3); // lit windows
-      g.fillStyle(0xffd27a, 0.6).fillRect(wx + 2, 36, 18, 10);
-    }
-    g.fillStyle(0x1e1a1a).fillRect(6, 70, 138, 8); // underframe
-    g.fillStyle(0xb3262b);
-    [24, 50, 100, 126].forEach((x) => g.fillCircle(x, 80, 9));
-    g.fillStyle(0x1e1a1a);
-    [24, 50, 100, 126].forEach((x) => g.fillCircle(x, 80, 3));
-  });
-  makeTexture(scene, 'train-loco', 150, 110, (g) => {
-    g.fillStyle(0x2a2a2e).fillRect(116, 0, 16, 34); // chimney
-    g.fillStyle(0xd9a441).fillRect(112, 0, 24, 5);
-    g.fillStyle(0xd9a441).fillRoundedRect(84, 18, 18, 16, 6); // brass dome
-    g.fillStyle(0x2a2a2e).fillRoundedRect(46, 32, 102, 46, 16); // boiler
-    g.fillStyle(0xd9a441).fillRect(60, 32, 3, 46);
-    g.fillRect(100, 32, 3, 46);
-    g.fillStyle(0x3a3a40).fillRect(0, 10, 50, 70); // cab
-    g.fillStyle(0x1e1e22).fillRect(-2, 8, 54, 6); // cab roof
-    g.fillStyle(0xf6e7c1).fillRect(12, 22, 24, 22); // cab window
-    g.fillStyle(0xb3262b).fillRect(0, 78, 150, 8); // running board
-    g.fillRect(140, 70, 10, 16); // buffer beam
-    g.fillStyle(0xb3262b);
-    [36, 74, 112].forEach((x) => g.fillCircle(x, 94, 15));
-    g.fillStyle(0x1e1a1a);
-    [36, 74, 112].forEach((x) => g.fillCircle(x, 94, 5));
-    g.lineStyle(3, 0xd9a441).lineBetween(36, 94, 112, 94);
-  });
-  // Seen side-on at a level crossing, scrolled as a tile sprite while a train passes.
-  makeTexture(scene, 'crossing-train', 220, 150, (g) => {
-    g.fillStyle(0x4a3326).fillRect(6, 20, 208, 108);
-    g.fillStyle(0x6b4a36);
-    for (let x = 14; x < 210; x += 22) g.fillRect(x, 26, 16, 96);
-    g.fillStyle(0xd9a441).fillRect(6, 64, 208, 4);
-    g.fillStyle(0x1e1a1a).fillRect(0, 128, 220, 8);
-    g.fillStyle(0x2a2a2e);
-    [36, 70, 150, 184].forEach((x) => g.fillCircle(x, 140, 10));
-    g.fillStyle(0x1e1a1a).fillRect(0, 100, 8, 6);
-  });
-  makeTexture(scene, 'puff', 28, 28, (g) => {
-    for (let r = 13; r > 2; r -= 3) g.fillStyle(0xffffff, 0.18).fillCircle(14, 14, r);
-  });
-  makeTexture(scene, 'leaf', 12, 8, (g) => {
-    g.fillStyle(0xffffff).fillEllipse(6, 4, 11, 6);
-    g.lineStyle(1, 0xdddddd).lineBetween(1, 4, 11, 4);
+  paintTexture(scene, 'coin', 22, 22, (ctx) => {
+    const g = ctx.createRadialGradient(8, 7, 1, 11, 11, 11);
+    g.addColorStop(0, css(0xfff1a8));
+    g.addColorStop(0.5, css(0xf2c040));
+    g.addColorStop(1, css(0xa8741a));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(11, 11, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = css(0x7a520e);
+    ctx.stroke();
+    ctx.strokeStyle = css(0xb8841e);
+    ctx.beginPath();
+    ctx.arc(11, 11, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = css(0xfff6cc, 0.9);
+    ctx.font = 'bold 9px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★', 11, 11.5);
   });
 
-  makeTexture(scene, 'mover-log', 110, 20, (g) => {
-    g.fillStyle(0x6b4423).fillRoundedRect(0, 0, 110, 20, 9);
-    g.fillStyle(0x8a5a34).fillRoundedRect(2, 2, 106, 12, 6);
-    g.lineStyle(2, 0x5a3a1c);
-    g.lineBetween(20, 6, 46, 6);
-    g.lineBetween(56, 11, 90, 11);
-    g.fillStyle(0xd9a86a).fillEllipse(104, 10, 9, 16);
-    g.lineStyle(1, 0x8a5a34).strokeEllipse(104, 10, 5, 9);
-  });
-
-  // HUD icons: one per season, plus a coin. All 28×28 except the coin.
-  makeTexture(scene, 'icon-spring', 28, 28, (g) => {
-    g.fillStyle(0xd76b93);
+  // Season icons (28×28).
+  paintTexture(scene, 'icon-spring', 28, 28, (ctx) => {
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      g.fillCircle(14 + Math.cos(a) * 7, 14 + Math.sin(a) * 7, 6.5);
+      const x = 14 + Math.cos(a) * 6.5;
+      const y = 14 + Math.sin(a) * 6.5;
+      const g = ctx.createRadialGradient(x - 1, y - 1, 0.5, x, y, 6.5);
+      g.addColorStop(0, css(0xffe0ec));
+      g.addColorStop(1, css(0xe0789e));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 6.2, 5, a, 0, Math.PI * 2);
+      ctx.fill();
     }
-    g.fillStyle(0xf8b8d0);
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      g.fillCircle(14 + Math.cos(a) * 7, 14 + Math.sin(a) * 7, 5);
-    }
-    g.fillStyle(0xffd84a).fillCircle(14, 14, 3.5);
-  });
-  makeTexture(scene, 'icon-summer', 28, 28, (g) => {
-    g.lineStyle(3, 0xf2a417);
+    radialGlow(ctx, 14, 14, 4.5, 0xffd84a, 1, 2);
+  }, { outline: 1 });
+  paintTexture(scene, 'icon-summer', 28, 28, (ctx) => {
+    radialGlow(ctx, 14, 14, 14, 0xffe27a, 0.6);
+    ctx.strokeStyle = css(0xf2a417);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      g.lineBetween(14 + Math.cos(a) * 9, 14 + Math.sin(a) * 9, 14 + Math.cos(a) * 13, 14 + Math.sin(a) * 13);
+      ctx.beginPath();
+      ctx.moveTo(14 + Math.cos(a) * 9, 14 + Math.sin(a) * 9);
+      ctx.lineTo(14 + Math.cos(a) * 12.5, 14 + Math.sin(a) * 12.5);
+      ctx.stroke();
     }
-    g.fillStyle(0xf2a417).fillCircle(14, 14, 8);
-    g.fillStyle(0xffd84a).fillCircle(14, 14, 6.5);
-  });
-  makeTexture(scene, 'icon-fall', 28, 28, (g) => {
-    g.fillStyle(0xa8401a).fillPoints([{ x: 14, y: 1 }, { x: 26, y: 13 }, { x: 14, y: 25 }, { x: 2, y: 13 }], true);
-    g.fillStyle(0xe0632a).fillPoints([{ x: 14, y: 3 }, { x: 24, y: 13 }, { x: 14, y: 23 }, { x: 4, y: 13 }], true);
-    g.lineStyle(2, 0x7a2e12).lineBetween(14, 6, 14, 27);
-    g.lineBetween(14, 13, 9, 9);
-    g.lineBetween(14, 13, 19, 9);
-  });
-  makeTexture(scene, 'icon-winter', 28, 28, (g) => {
-    const arms = (width, color) => {
-      g.lineStyle(width, color);
+    const g = ctx.createRadialGradient(12, 12, 1, 14, 14, 8);
+    g.addColorStop(0, css(0xfff6b0));
+    g.addColorStop(1, css(0xf2a417));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(14, 14, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+  }, { outline: 1 });
+  paintTexture(scene, 'icon-fall', 28, 28, (ctx) => {
+    ctx.beginPath();
+    const pts = [[14, 2], [17, 8], [23, 6], [21, 12], [26, 14], [20, 17], [21, 22], [15, 19], [14, 25], [13, 19], [7, 22], [8, 17], [2, 14], [7, 12], [5, 6], [11, 8]];
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    const g = ctx.createLinearGradient(4, 4, 24, 24);
+    g.addColorStop(0, css(0xf6b13c));
+    g.addColorStop(1, css(0xb53a1f));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = css(0x7a2e12);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(14, 27);
+    ctx.lineTo(14, 8);
+    ctx.stroke();
+  }, { outline: 1 });
+  paintTexture(scene, 'icon-winter', 28, 28, (ctx) => {
+    radialGlow(ctx, 14, 14, 13, 0xcfe9ff, 0.6);
+    ctx.lineCap = 'round';
+    for (const [w, c] of [[3.4, 0x3f6c9e], [1.6, 0xffffff]]) {
+      ctx.strokeStyle = css(c);
+      ctx.lineWidth = w;
       for (let i = 0; i < 3; i++) {
         const a = (i / 3) * Math.PI;
         const dx = Math.cos(a) * 11;
         const dy = Math.sin(a) * 11;
-        g.lineBetween(14 - dx, 14 - dy, 14 + dx, 14 + dy);
+        ctx.beginPath();
+        ctx.moveTo(14 - dx, 14 - dy);
+        ctx.lineTo(14 + dx, 14 + dy);
+        ctx.stroke();
       }
-    };
-    arms(5, 0x3f6c9e);
-    arms(2.5, 0xffffff);
-    g.fillStyle(0xffffff).fillCircle(14, 14, 2.5);
+    }
   });
-  makeTexture(scene, 'coin', 22, 22, (g) => {
-    g.fillStyle(0xb7811c).fillCircle(11, 11, 10);
-    g.fillStyle(0xf5c542).fillCircle(11, 11, 8);
-    g.fillStyle(0xffe58a).fillCircle(8.5, 8, 3);
-    g.fillStyle(0xb7811c).fillRect(10, 6, 2, 10);
+
+  // UI panels (nine-slice sources): wood frame, parchment, buttons, keycap.
+  paintTexture(scene, 'ui-wood', 240, 160, (ctx, w, h) => uiPanel(ctx, w, h, { base: 0x8a5a34, edge: 0x3b2414, rnd: seeded(5), lines: 26 }));
+  paintTexture(scene, 'ui-paper', 160, 120, (ctx, w, h) => uiPanel(ctx, w, h, { base: 0x8a5a34, edge: 0x3b2414, inner: 0xfbf0dc, rnd: seeded(6), lines: 20 }));
+  paintTexture(scene, 'ui-plank', 48, 40, (ctx, w, h) => uiPanel(ctx, w, h, { base: 0xc8935c, edge: 0x5a3820, r: 9, rnd: seeded(7) }));
+  paintTexture(scene, 'ui-plank-hot', 48, 40, (ctx, w, h) => uiPanel(ctx, w, h, { base: 0xf2c25a, edge: 0x7a4e16, r: 9, rnd: seeded(8) }));
+  paintTexture(scene, 'ui-key', 30, 30, (ctx, w, h) => uiPanel(ctx, w, h, { base: 0xb8865a, edge: 0x3b2414, inner: 0xfbf0dc, r: 7, rnd: seeded(9) }));
+}
+
+function paintParticles(scene) {
+  const p1 = { scale: 1 };
+  paintTexture(scene, 'shadow', 64, 16, (ctx) => contactShadow(ctx, 32, 8, 31, 7.5, 0.8), p1);
+  paintTexture(scene, 'glow', 64, 64, (ctx) => radialGlow(ctx, 32, 32, 32, 0xffffff, 1), p1);
+  paintTexture(scene, 'petal', 10, 7, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 10, 7);
+    g.addColorStop(0, css(0xffe3ee));
+    g.addColorStop(1, css(0xf08cb4));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(5, 3.5, 4.8, 2.6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }, p1);
+  paintTexture(scene, 'leaf', 12, 9, (ctx) => {
+    ctx.fillStyle = css(0xffffff);
+    ctx.beginPath();
+    ctx.moveTo(1, 4.5);
+    ctx.quadraticCurveTo(6, -1, 11, 4.5);
+    ctx.quadraticCurveTo(6, 10, 1, 4.5);
+    ctx.fill();
+    ctx.strokeStyle = css(0xd0d0d0);
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(1, 4.5);
+    ctx.lineTo(11, 4.5);
+    ctx.stroke();
+  }, p1);
+  paintTexture(scene, 'snowflake', 7, 7, (ctx) => radialGlow(ctx, 3.5, 3.5, 3.5, 0xffffff, 1, 1), p1);
+  paintTexture(scene, 'puff', 32, 32, (ctx) => radialGlow(ctx, 16, 16, 16, 0xffffff, 0.75), p1);
+  paintTexture(scene, 'droplet', 6, 6, (ctx) => radialGlow(ctx, 3, 3, 3, 0xd8f3ff, 1, 1), p1);
+  paintTexture(scene, 'bubble', 8, 8, (ctx) => {
+    ctx.strokeStyle = css(0xe8fbff);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(4, 4, 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = css(0xffffff);
+    ctx.fillRect(2.5, 2.5, 1, 1);
+  }, p1);
+  paintTexture(scene, 'seed', 10, 10, (ctx) => {
+    ctx.strokeStyle = css(0xffffff, 0.9);
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(5, 5);
+      ctx.lineTo(5 + Math.cos(a) * 4.5, 5 + Math.sin(a) * 4.5);
+      ctx.stroke();
+    }
+    radialGlow(ctx, 5, 5, 2, 0xfff6c8, 1);
+  }, p1);
+  paintTexture(scene, 'dust', 6, 6, (ctx) => radialGlow(ctx, 3, 3, 3, 0xfff0c8, 0.8), p1);
+  paintTexture(scene, 'sparkle', 12, 12, (ctx) => {
+    radialGlow(ctx, 6, 6, 6, 0xfff27a, 0.6);
+    ctx.fillStyle = css(0xffffff);
+    ctx.beginPath();
+    [[6, 0], [7, 5], [12, 6], [7, 7], [6, 12], [5, 7], [0, 6], [5, 5]].forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+  }, p1);
+  paintTexture(scene, 'raindrop', 3, 14, (ctx) => vGradient(ctx, 1, 0, 1, 14, [[0, 0xcfe6ff, 0], [1, 0xcfe6ff, 0.9]]), p1);
+  paintTexture(scene, 'shimmer', 10, 40, (ctx) => {
+    for (let y = 0; y < 40; y += 1) {
+      const x = 5 + Math.sin(y * 0.4) * 3;
+      ctx.fillStyle = css(0xffffff, 0.5 * Math.sin((y / 40) * Math.PI));
+      ctx.fillRect(x - 1, y, 2, 1);
+    }
+  }, p1);
+  paintTexture(scene, 'footprint', 12, 6, (ctx) => {
+    ctx.fillStyle = css(0x6d86a0, 0.85);
+    ctx.beginPath();
+    ctx.ellipse(3, 3, 3, 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(9, 2.5, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }, p1);
+  paintTexture(scene, 'fog-hole', 400, 400, (ctx) => {
+    const g = ctx.createRadialGradient(200, 200, 100, 200, 200, 200);
+    g.addColorStop(0, css(0xffffff, 1));
+    g.addColorStop(1, css(0xffffff, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 400, 400);
+  }, p1);
+  // Water: a seamless strip of soft highlight ripples (scrolled as a tile sprite).
+  paintTexture(scene, 'water-ripples', 256, 64, (ctx) => {
+    const r = seeded(21);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 46; i++) {
+      const x = r() * 256;
+      const y = 3 + Math.pow(r(), 1.6) * 58;
+      const w = 6 + r() * 22 * (1 - y / 80);
+      ctx.strokeStyle = css(0xffffff, 0.18 + r() * 0.35 * (1 - y / 70));
+      ctx.lineWidth = 0.8 + r() * 1.2;
+      for (const dx of [0, -256, 256]) {
+        ctx.beginPath();
+        ctx.moveTo(x + dx, y);
+        ctx.quadraticCurveTo(x + dx + w / 2, y - 1.2, x + dx + w, y);
+        ctx.stroke();
+      }
+    }
+  }, p1);
+}
+
+function paintVehicles(scene) {
+  const o2 = { outline: 2 };
+  paintTexture(scene, 'mover-canoe', 130, 30, (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(0, 3);
+    ctx.quadraticCurveTo(10, 9, 16, 9);
+    ctx.lineTo(114, 9);
+    ctx.quadraticCurveTo(120, 9, 130, 3);
+    ctx.quadraticCurveTo(122, 27, 104, 28);
+    ctx.lineTo(26, 28);
+    ctx.quadraticCurveTo(8, 27, 0, 3);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, 6, 0, 28);
+    g.addColorStop(0, css(0xf06a4c));
+    g.addColorStop(0.55, css(0xc9442c));
+    g.addColorStop(1, css(0x7a2414));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.fillStyle = css(0xffd23f);
+    ctx.fillRect(16, 16, 98, 2.4);
+    ctx.fillStyle = css(0x5a2c14);
+    ctx.fillRect(14, 8, 102, 3);
+    ctx.fillStyle = css(0xffffff, 0.35);
+    ctx.fillRect(20, 12, 86, 1.2);
+  }, o2);
+  paintTexture(scene, 'mover-log', 110, 22, (ctx) => {
+    roundRect(ctx, 0, 1, 110, 20, 10);
+    const g = ctx.createLinearGradient(0, 1, 0, 21);
+    g.addColorStop(0, css(0xa8754a));
+    g.addColorStop(0.5, css(0x7a4e2c));
+    g.addColorStop(1, css(0x4a2e18));
+    ctx.fillStyle = g;
+    ctx.fill();
+    const r = seeded(31);
+    ctx.strokeStyle = css(0x3e2614, 0.7);
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 9; i++) {
+      const y = 4 + r() * 14;
+      const x = r() * 80;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 14 + r() * 20, y + (r() - 0.5) * 2);
+      ctx.stroke();
+    }
+    const e = ctx.createRadialGradient(102, 11, 1, 102, 11, 9);
+    e.addColorStop(0, css(0xf0cf9c));
+    e.addColorStop(1, css(0xb88a58));
+    ctx.fillStyle = e;
+    ctx.beginPath();
+    ctx.ellipse(102, 11, 6, 9.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = css(0x8a5a34, 0.8);
+    for (const rr of [2, 4.5, 7]) {
+      ctx.beginPath();
+      ctx.ellipse(102, 11, rr * 0.6, rr, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }, o2);
+  paintTexture(scene, 'train-carriage', 150, 90, (ctx) => {
+    roundRect(ctx, -1, 0, 152, 12, 6);
+    vGradient(ctx, 0, 0, 150, 12, [[0, 0x5a4444], [1, 0x2a1e1e]]);
+    roundRect(ctx, 2, 8, 146, 62, 3);
+    const g = ctx.createLinearGradient(0, 8, 0, 70);
+    g.addColorStop(0, css(0x9a2c3a));
+    g.addColorStop(0.6, css(0x7a1f2b));
+    g.addColorStop(1, css(0x4e121a));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.fillStyle = css(0xe0b04e);
+    ctx.fillRect(2, 14, 146, 2.5);
+    ctx.fillRect(2, 60, 146, 2.5);
+    for (let wx = 12; wx < 140; wx += 32) {
+      roundRect(ctx, wx, 21, 22, 27, 4);
+      const wg = ctx.createLinearGradient(0, 21, 0, 48);
+      wg.addColorStop(0, css(0xfff3d0));
+      wg.addColorStop(1, css(0xf2b04e));
+      ctx.fillStyle = wg;
+      ctx.fill();
+      ctx.fillStyle = css(0xffffff, 0.35);
+      ctx.fillRect(wx + 3, 23, 4, 20);
+    }
+    vGradient(ctx, 6, 70, 138, 8, [[0, 0x2a2424], [1, 0x121010]]);
+    [24, 50, 100, 126].forEach((x) => wheel(ctx, x, 80, 9, 0xb3262b));
+  }, o2);
+  paintTexture(scene, 'train-loco', 150, 110, (ctx) => {
+    vGradient(ctx, 116, 0, 16, 34, [[0, 0x3a3a40], [1, 0x1a1a1e]]);
+    ctx.fillStyle = css(0xd9a441);
+    ctx.fillRect(112, 0, 24, 5);
+    radialGlow(ctx, 93, 26, 9, 0xf2c45a, 1, 5);
+    roundRect(ctx, 46, 32, 102, 46, 16);
+    const b = ctx.createLinearGradient(0, 32, 0, 78);
+    b.addColorStop(0, css(0x4a4a52));
+    b.addColorStop(0.35, css(0x2a2a30));
+    b.addColorStop(1, css(0x101014));
+    ctx.fillStyle = b;
+    ctx.fill();
+    ctx.fillStyle = css(0xffffff, 0.18);
+    ctx.fillRect(52, 36, 92, 3);
+    ctx.fillStyle = css(0xd9a441);
+    ctx.fillRect(60, 32, 3, 46);
+    ctx.fillRect(100, 32, 3, 46);
+    vGradient(ctx, 0, 10, 50, 70, [[0, 0x4a4a52], [1, 0x1e1e22]]);
+    ctx.fillStyle = css(0x141416);
+    ctx.fillRect(-2, 8, 54, 6);
+    roundRect(ctx, 12, 22, 24, 22, 3);
+    ctx.fillStyle = css(0xfff0c8);
+    ctx.fill();
+    ctx.fillStyle = css(0xb3262b);
+    ctx.fillRect(0, 78, 150, 8);
+    ctx.fillRect(140, 70, 10, 16);
+    [36, 74, 112].forEach((x) => wheel(ctx, x, 94, 15, 0xb3262b));
+    ctx.strokeStyle = css(0xd9a441);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(36, 94);
+    ctx.lineTo(112, 94);
+    ctx.stroke();
+  }, o2);
+  paintTexture(scene, 'crossing-train', 220, 150, (ctx) => {
+    vGradient(ctx, 6, 20, 208, 108, [[0, 0x6b4a36], [1, 0x3a281c]]);
+    const r = seeded(41);
+    for (let x = 14; x < 210; x += 22) {
+      vGradient(ctx, x, 26, 16, 96, [[0, 0x8a6246], [1, 0x5a3e2c]]);
+      ctx.fillStyle = css(0x2a1c12, 0.4);
+      ctx.fillRect(x + 15, 26, 1, 96);
+      speckle(ctx, x, 26, 16, 96, [0x3a281c], 6, r, [0.4, 1], 0.5);
+    }
+    ctx.fillStyle = css(0xd9a441);
+    ctx.fillRect(6, 64, 208, 3.5);
+    ctx.fillStyle = css(0x161212);
+    ctx.fillRect(0, 128, 220, 8);
+    [36, 70, 150, 184].forEach((x) => wheel(ctx, x, 140, 10, 0x3a3a40));
   });
 }
 
-// Hiding-spot textures by kind, drawn from the season palette.
+export function createCommonTextures(scene) {
+  buildOutfit(scene, HOME_OUTFIT);
+  buildPoliceLook(scene, 'plain');
+  paintHud(scene);
+  paintParticles(scene);
+  paintVehicles(scene);
+}
+
+// ----- season textures -----
+
+// Trees in four styles (blossom, leafy, autumn, snowy pine), from the palette.
+function paintTree(ctx, p, style) {
+  const rnd = seeded(7);
+  contactShadow(ctx, 70, 167, 46, 6, 0.4);
+  if (style === 'pine') {
+    pine(ctx, 70, 168, 160, p.blossomDark, { snow: 0xffffff, light: p.blossom });
+    return;
+  }
+  // Trunk with bark gradient and branches.
+  ctx.beginPath();
+  ctx.moveTo(62, 170);
+  ctx.quadraticCurveTo(66, 130, 66, 82);
+  ctx.lineTo(74, 82);
+  ctx.quadraticCurveTo(75, 130, 79, 170);
+  ctx.closePath();
+  const tg = ctx.createLinearGradient(62, 0, 79, 0);
+  tg.addColorStop(0, css(shade(p.trunk, 1.25)));
+  tg.addColorStop(1, css(shade(p.trunk, 0.65)));
+  ctx.fillStyle = tg;
+  ctx.fill();
+  ctx.strokeStyle = css(p.trunk);
+  ctx.lineCap = 'round';
+  for (const [x1, y1, x2, y2, w] of [[70, 118, 42, 82, 5], [70, 104, 101, 74, 5], [68, 96, 56, 64, 3]]) {
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.quadraticCurveTo((x1 + x2) / 2, y1 - 4, x2, y2);
+    ctx.stroke();
+  }
+  const blobs = [[70, 58, 34], [40, 78, 24], [102, 76, 26], [52, 38, 24], [90, 40, 26], [70, 86, 22], [28, 62, 16], [114, 58, 16], [70, 26, 20]];
+  if (style === 'autumn') {
+    const cols = [p.blossom, p.blossomLight, p.blossomDark, shade(p.blossom, 1.1)];
+    for (const [x, y, r] of blobs) {
+      const c = cols[Math.floor(rnd() * cols.length)];
+      puffy(ctx, [[x, y, r]], c, shade(c, 1.35), shade(c, 0.6));
+    }
+  } else {
+    puffy(ctx, blobs, p.blossom, p.blossomLight, p.blossomDark);
+  }
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = css(i % 3 ? (p.treeSpeckle ?? 0xffffff) : p.blossomLight, 0.75);
+    ctx.beginPath();
+    ctx.arc(20 + rnd() * 100, 16 + rnd() * 84, 0.8 + rnd() * 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Hiding-spot textures by kind, painted from the season palette.
 // Only the kinds listed in a season's `hidingSpots` are generated.
 const HIDE_TEXTURES = {
   bush: {
     width: 100,
     height: 62,
-    draw(g, p) {
-      const blobs = [[22, 42, 20], [50, 32, 27], [78, 42, 20]];
-      g.fillStyle(p.bushDark);
-      blobs.forEach(([x, y, r]) => g.fillCircle(x, y, r));
-      g.fillRect(4, 42, 92, 20);
-      g.fillStyle(p.bush);
-      blobs.forEach(([x, y, r]) => g.fillCircle(x, y - 3, r - 4));
-      g.fillStyle(p.bushLight);
-      blobs.forEach(([x, y, r]) => g.fillCircle(x - r * 0.3, y - r * 0.45, r * 0.35));
-      const rnd = seededRandom(11);
-      for (let i = 0; i < 9; i++) {
-        g.fillStyle(p.flowers[i % p.flowers.length]);
-        g.fillCircle(12 + rnd() * 76, 14 + rnd() * 36, 2.5);
-      }
+    draw(ctx, p) {
+      contactShadow(ctx, 50, 60, 48, 5, 0.4);
+      puffy(ctx, [[20, 44, 18], [48, 34, 25], [78, 42, 20], [34, 50, 14], [64, 50, 14]], p.bush, p.bushLight, p.bushDark);
+      const rnd = seeded(11);
+      for (let i = 0; i < 12; i++) radialGlow(ctx, 12 + rnd() * 76, 16 + rnd() * 36, 3.2, p.flowers[i % p.flowers.length], 1, 1.4);
     },
   },
-  // Tall, dense flower bed: tall enough to cover a crouching player.
   flowers: {
     width: 96,
-    height: 44,
-    draw(g, p) {
-      g.fillStyle(p.dirtDark).fillRoundedRect(2, 36, 92, 8, 3);
-      const rnd = seededRandom(17);
+    height: 46,
+    draw(ctx, p) {
+      contactShadow(ctx, 48, 44, 46, 4, 0.35);
+      vGradient(ctx, 2, 38, 92, 8, [[0, p.dirtDark], [1, shade(p.dirtDark, 0.7)]]);
+      const rnd = seeded(17);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 40; i++) {
+        const x = 4 + (i / 39) * 88 + (rnd() - 0.5) * 3;
+        ctx.strokeStyle = css(shade(p.grassDark, 0.8 + rnd() * 0.4));
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(x, 42);
+        ctx.quadraticCurveTo(x + 2, 30, x + (rnd() - 0.5) * 6, 14 + rnd() * 12);
+        ctx.stroke();
+      }
       for (let i = 0; i < 26; i++) {
-        const x = 6 + (i / 25) * 84 + (rnd() - 0.5) * 4;
-        const top = 8 + rnd() * 12;
-        g.lineStyle(3, p.grassDark).lineBetween(x, 40, x, top);
-        g.fillStyle(p.bushDark).fillEllipse(x + 3, 30 - rnd() * 6, 7, 13);
+        const x = 6 + (i / 25) * 84 + (rnd() - 0.5) * 5;
+        const y = 8 + rnd() * 16;
+        const c = p.flowers[i % p.flowers.length];
+        const g = ctx.createRadialGradient(x - 1, y - 2, 0.5, x, y, 5);
+        g.addColorStop(0, css(shade(c, 1.3)));
+        g.addColorStop(1, css(shade(c, 0.75)));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y - 3);
+        ctx.lineTo(x - 2, y - 7);
+        ctx.lineTo(x, y - 3.5);
+        ctx.lineTo(x + 2, y - 7);
+        ctx.lineTo(x + 4, y - 3);
+        ctx.quadraticCurveTo(x + 4, y + 4, x, y + 4);
+        ctx.quadraticCurveTo(x - 4, y + 4, x - 4, y - 3);
+        ctx.fill();
       }
-      g.fillStyle(p.bush).fillRect(4, 28, 88, 10);
-      for (let i = 0; i < 22; i++) {
-        const x = 8 + (i / 21) * 80 + (rnd() - 0.5) * 6;
-        const y = 6 + rnd() * 14;
-        g.fillStyle(p.flowers[i % p.flowers.length]);
-        g.fillEllipse(x, y, 9, 11);
-        g.fillTriangle(x - 4.5, y - 2, x - 1.5, y - 8, x + 1, y - 2);
-        g.fillTriangle(x - 1, y - 2, x + 1.5, y - 8, x + 4.5, y - 2);
+    },
+  },
+  overhang: {
+    width: 120,
+    height: 100,
+    draw(ctx, p) {
+      vGradient(ctx, 6, 30, 108, 70, [[0, 0x1b2a4a, 0.45], [1, 0x1b2a4a, 0.15]]); // cool shade
+      vGradient(ctx, 98, 20, 22, 80, [[0, p.rock], [1, p.rockDark]]);
+      ctx.beginPath();
+      ctx.moveTo(0, 14);
+      ctx.bezierCurveTo(10, 0, 50, -2, 120, 6);
+      ctx.lineTo(120, 36);
+      ctx.bezierCurveTo(80, 44, 30, 42, 8, 34);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, 0, 0, 44);
+      g.addColorStop(0, css(p.rockLight));
+      g.addColorStop(0.5, css(p.rock));
+      g.addColorStop(1, css(p.rockDark));
+      ctx.fillStyle = g;
+      ctx.fill();
+      speckle(ctx, 8, 6, 100, 30, [p.rockDark, p.rockLight], 60, seeded(19), [0.5, 1.6], 0.5);
+      contactShadow(ctx, 60, 98, 56, 4, 0.35);
+    },
+  },
+  reeds: {
+    width: 100,
+    height: 130,
+    draw(ctx, p) {
+      const rnd = seeded(23);
+      ctx.lineCap = 'round';
+      for (let layer = 0; layer < 3; layer++) {
+        for (let i = 0; i < 26; i++) {
+          const x = 3 + (i / 25) * 94 + (rnd() - 0.5) * 6;
+          const top = 8 + rnd() * 40 + layer * 12;
+          const lean = (rnd() - 0.5) * 16;
+          ctx.strokeStyle = css(shade(layer === 2 ? p.reed : p.reedDark, 0.85 + rnd() * 0.35));
+          ctx.lineWidth = 1.6 + layer * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(x, 130);
+          ctx.quadraticCurveTo(x + lean * 0.3, 70, x + lean, top);
+          ctx.stroke();
+          if (rnd() < 0.28) {
+            const g = ctx.createLinearGradient(x + lean - 3, 0, x + lean + 3, 0);
+            g.addColorStop(0, css(shade(p.reedTip, 1.3)));
+            g.addColorStop(1, css(shade(p.reedTip, 0.7)));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.ellipse(x + lean, top + 9, 3, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
-    },
-  },
-  // ----- Hiding places unlocked in the shop -----
-  // Potting shed (Spring).
-  shed: {
-    width: 104,
-    height: 92,
-    draw(g, p) {
-      g.fillStyle(p.woodDark).fillRect(10, 30, 84, 62);
-      g.fillStyle(p.wood).fillRect(14, 34, 76, 58);
-      g.fillStyle(p.woodDark);
-      for (let x = 24; x < 90; x += 12) g.fillRect(x, 34, 2, 58);
-      g.fillStyle(0x3a2e24).fillRect(38, 50, 28, 42); // doorway
-      g.fillStyle(p.house.roof).fillPoints([{ x: 0, y: 34 }, { x: 52, y: 4 }, { x: 104, y: 34 }], true);
-      g.fillStyle(p.flowers[0]).fillCircle(20, 88, 6);
-      g.fillStyle(p.flowers[2]).fillCircle(86, 88, 6);
-    },
-  },
-  // Boathouse on the shore (Summer).
-  boathouse: {
-    width: 128,
-    height: 96,
-    draw(g, p) {
-      g.fillStyle(p.woodDark).fillRect(8, 34, 112, 62);
-      g.fillStyle(p.wood).fillRect(12, 38, 104, 58);
-      g.fillStyle(p.woodDark);
-      for (let y = 46; y < 96; y += 10) g.fillRect(12, y, 104, 2);
-      g.fillStyle(0x20303a).fillRoundedRect(36, 52, 56, 44, { tl: 26, tr: 26, bl: 0, br: 0 }); // boat door
-      g.fillStyle(p.house.roof).fillPoints([{ x: 0, y: 38 }, { x: 64, y: 2 }, { x: 128, y: 38 }], true);
-      g.fillStyle(0xffffff).fillRect(54, 20, 20, 8);
-    },
-  },
-  // Hollow oak with a dark opening (Fall).
-  hollowTree: {
-    width: 110,
-    height: 120,
-    draw(g, p) {
-      g.fillStyle(p.trunk).fillRect(30, 40, 50, 80);
-      g.fillStyle(0x2a1a10).fillEllipse(55, 92, 30, 50); // hollow
-      g.fillStyle(p.blossomDark).fillCircle(55, 34, 34);
-      g.fillStyle(p.blossom).fillCircle(32, 40, 24);
-      g.fillCircle(80, 38, 26);
-      g.fillStyle(p.blossomLight).fillCircle(56, 20, 18);
-    },
-  },
-  // Ice cave mouth in a snowbank (Winter).
-  iceCave: {
-    width: 124,
-    height: 84,
-    draw(g, p) {
-      g.fillStyle(p.grassDark).fillEllipse(62, 60, 124, 60);
-      g.fillStyle(0xffffff).fillEllipse(62, 54, 116, 60);
-      g.fillStyle(0x9cc4e4).fillEllipse(62, 70, 58, 46);
-      g.fillStyle(0x3a5a78).fillEllipse(62, 76, 42, 36); // cave mouth
-      g.fillStyle(0xd8f0ff);
-      for (let x = 40; x < 90; x += 10) g.fillTriangle(x, 52, x + 6, 52, x + 3, 64); // icicles
-    },
-  },
-  // Stack of old luggage trunks on a station island.
-  // Small timber hut buried in snow (Winter blizzard).
-  hut: {
-    width: 104,
-    height: 86,
-    draw(g, p) {
-      g.fillStyle(p.woodDark).fillRect(12, 34, 80, 52);
-      g.fillStyle(p.wood).fillRect(16, 38, 72, 48);
-      g.fillStyle(p.woodDark);
-      for (let y = 46; y < 86; y += 10) g.fillRect(16, y, 72, 2);
-      g.fillStyle(0x2b2320).fillRect(42, 52, 22, 34); // dark doorway
-      g.fillStyle(p.house.window).fillRect(68, 50, 12, 10);
-      g.fillStyle(0xffffff).fillPoints([{ x: 0, y: 40 }, { x: 52, y: 4 }, { x: 104, y: 40 }, { x: 96, y: 46 }, { x: 8, y: 46 }], true);
-      g.fillStyle(p.grassDark).fillRect(8, 42, 88, 4);
-      g.fillStyle(0xffffff).fillEllipse(30, 84, 50, 14);
-      g.fillEllipse(84, 84, 40, 12);
-    },
-  },
-  // Wind-piled snowdrift: deep enough to crouch behind.
-  drift: {
-    width: 108,
-    height: 48,
-    draw(g, p) {
-      g.fillStyle(p.grassDark).fillEllipse(54, 34, 108, 30);
-      g.fillStyle(0xffffff).fillEllipse(48, 30, 96, 36);
-      g.fillEllipse(70, 22, 60, 30);
-      g.fillStyle(p.grassDark, 0.6).fillEllipse(40, 40, 60, 8);
     },
   },
   crates: {
     width: 92,
-    height: 58,
-    draw(g, p) {
-      g.fillStyle(p.woodDark).fillRect(2, 22, 52, 36);
-      g.fillStyle(p.wood).fillRect(5, 25, 46, 30);
-      g.fillStyle(p.woodDark).fillRect(5, 37, 46, 3);
-      g.fillStyle(0x7a1f2b).fillRect(48, 30, 42, 28); // red trunk
-      g.fillStyle(0xd9a441).fillRect(48, 40, 42, 3);
-      g.fillRect(66, 30, 4, 28);
-      g.fillStyle(0x5a4636).fillRoundedRect(14, 2, 54, 22, 4); // suitcase on top
-      g.fillStyle(0xd9a441).fillRect(36, 0, 10, 4);
-      g.fillStyle(0x3a2e24).fillRect(14, 12, 54, 2);
+    height: 60,
+    draw(ctx, p) {
+      contactShadow(ctx, 46, 58, 46, 4, 0.4);
+      woodGrain(ctx, 2, 22, 52, 36, p.wood, seeded(29), 8);
+      ctx.strokeStyle = css(p.woodDark);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(3, 23, 50, 34);
+      ctx.beginPath();
+      ctx.moveTo(3, 40);
+      ctx.lineTo(53, 40);
+      ctx.stroke();
+      vGradient(ctx, 48, 30, 42, 28, [[0, 0x9a2c3a], [1, 0x5a141e]]);
+      ctx.fillStyle = css(0xd9a441);
+      ctx.fillRect(48, 40, 42, 2.5);
+      ctx.fillRect(66, 30, 3.5, 28);
+      roundRect(ctx, 14, 2, 54, 22, 4);
+      const g = ctx.createLinearGradient(0, 2, 0, 24);
+      g.addColorStop(0, css(0x7a6250));
+      g.addColorStop(1, css(0x4a3a2e));
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.fillStyle = css(0xd9a441);
+      ctx.fillRect(36, 0, 10, 4);
     },
   },
-  // Rock overhang: a heavy lip of rock with cool shade beneath (shade + hiding).
-  overhang: {
-    width: 120,
-    height: 100,
-    draw(g, p) {
-      g.fillStyle(0x1b2a4a, 0.32).fillRect(6, 30, 108, 70); // shade
-      g.fillStyle(0x1b2a4a, 0.18).fillRect(0, 40, 120, 60);
-      g.fillStyle(p.rockDark).fillRect(98, 20, 22, 80); // back pillar
-      g.fillStyle(p.rock).fillRect(102, 20, 14, 80);
-      g.fillStyle(p.rockDark).fillPoints([{ x: 0, y: 14 }, { x: 18, y: 2 }, { x: 70, y: 0 }, { x: 120, y: 6 }, { x: 120, y: 36 }, { x: 60, y: 42 }, { x: 10, y: 36 }], true);
-      g.fillStyle(p.rock).fillPoints([{ x: 4, y: 14 }, { x: 20, y: 4 }, { x: 70, y: 2 }, { x: 118, y: 8 }, { x: 118, y: 28 }, { x: 60, y: 34 }, { x: 12, y: 30 }], true);
-      g.fillStyle(p.rockLight).fillRect(22, 6, 60, 4);
-      g.lineStyle(2, p.rockDark).lineBetween(40, 12, 48, 26);
-      g.lineBetween(84, 10, 78, 24);
-      g.fillStyle(p.rockDark);
-      g.fillCircle(20, 97, 4);
-      g.fillCircle(30, 98, 3);
+  hut: {
+    width: 108,
+    height: 92,
+    draw(ctx, p) {
+      contactShadow(ctx, 54, 90, 54, 5, 0.4);
+      for (let y = 38; y < 90; y += 8) {
+        roundRect(ctx, 12, y, 84, 8, 4);
+        const g = ctx.createLinearGradient(0, y, 0, y + 8);
+        g.addColorStop(0, css(shade(p.wood, 1.2)));
+        g.addColorStop(1, css(shade(p.wood, 0.7)));
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+      vGradient(ctx, 42, 54, 22, 36, [[0, 0x1e1612], [1, 0x2b2320]]);
+      radialGlow(ctx, 78, 60, 14, p.house.window, 0.6);
+      roundRect(ctx, 71, 53, 14, 12, 2);
+      ctx.fillStyle = css(p.house.window);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, 42);
+      ctx.quadraticCurveTo(54, -6, 108, 42);
+      ctx.lineTo(100, 48);
+      ctx.lineTo(8, 48);
+      ctx.closePath();
+      const sg = ctx.createLinearGradient(0, 6, 0, 48);
+      sg.addColorStop(0, css(0xffffff));
+      sg.addColorStop(1, css(0xc8d6e3));
+      ctx.fillStyle = sg;
+      ctx.fill();
+      puffy(ctx, [[28, 88, 14], [84, 88, 12]], 0xffffff, 0xffffff, 0xd3dfea);
     },
   },
-  // Tall reeds and cattails standing in water; tiled along the river bank.
-  reeds: {
-    width: 100,
-    height: 130,
-    draw(g, p) {
-      const rnd = seededRandom(23);
-      for (let layer = 0; layer < 2; layer++) {
-        for (let i = 0; i < 22; i++) {
-          const x = 4 + (i / 21) * 92 + (rnd() - 0.5) * 6;
-          const top = 10 + rnd() * 40 + layer * 14;
-          const lean = (rnd() - 0.5) * 12;
-          g.lineStyle(layer ? 4 : 3, layer ? p.reed : p.reedDark).lineBetween(x, 130, x + lean, top);
-          if (rnd() < 0.3) g.fillStyle(p.reedTip).fillEllipse(x + lean, top + 8, 6, 18);
-        }
+  drift: {
+    width: 110,
+    height: 50,
+    draw(ctx) {
+      puffy(ctx, [[30, 36, 22], [56, 26, 26], [84, 34, 22], [44, 42, 18], [72, 42, 18]], 0xf4f8fb, 0xffffff, 0xb8c8d8);
+      contactShadow(ctx, 55, 48, 52, 3, 0.25);
+    },
+  },
+  shed: {
+    width: 104,
+    height: 92,
+    draw(ctx, p) {
+      contactShadow(ctx, 52, 90, 52, 4, 0.4);
+      woodGrain(ctx, 10, 30, 84, 62, p.wood, seeded(37), 10);
+      ctx.fillStyle = css(p.woodDark, 0.6);
+      for (let x = 22; x < 94; x += 12) ctx.fillRect(x, 30, 1.5, 62);
+      vGradient(ctx, 38, 50, 28, 42, [[0, 0x2b2320], [1, 0x3a2e24]]);
+      ctx.beginPath();
+      ctx.moveTo(0, 34);
+      ctx.lineTo(52, 4);
+      ctx.lineTo(104, 34);
+      ctx.closePath();
+      ctx.fillStyle = css(p.house.roof);
+      ctx.fill();
+      puffy(ctx, [[18, 86, 7], [86, 86, 7]], p.flowers[0], shade(p.flowers[0], 1.3), shade(p.flowers[0], 0.7));
+    },
+  },
+  boathouse: {
+    width: 128,
+    height: 96,
+    draw(ctx, p) {
+      contactShadow(ctx, 64, 94, 62, 4, 0.4);
+      woodGrain(ctx, 8, 34, 112, 62, p.wood, seeded(43), 12);
+      ctx.fillStyle = css(p.woodDark, 0.6);
+      for (let y = 42; y < 96; y += 9) ctx.fillRect(8, y, 112, 1.2);
+      ctx.beginPath();
+      ctx.moveTo(36, 96);
+      ctx.lineTo(36, 66);
+      ctx.quadraticCurveTo(64, 40, 92, 66);
+      ctx.lineTo(92, 96);
+      ctx.closePath();
+      ctx.fillStyle = css(0x1a2a34);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, 38);
+      ctx.lineTo(64, 2);
+      ctx.lineTo(128, 38);
+      ctx.closePath();
+      ctx.fillStyle = css(p.house.roof);
+      ctx.fill();
+    },
+  },
+  hollowTree: {
+    width: 112,
+    height: 124,
+    draw(ctx, p) {
+      contactShadow(ctx, 56, 122, 46, 5, 0.4);
+      ctx.beginPath();
+      ctx.moveTo(30, 124);
+      ctx.quadraticCurveTo(34, 70, 38, 40);
+      ctx.lineTo(74, 40);
+      ctx.quadraticCurveTo(78, 70, 84, 124);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(30, 0, 84, 0);
+      g.addColorStop(0, css(shade(p.trunk, 1.3)));
+      g.addColorStop(1, css(shade(p.trunk, 0.6)));
+      ctx.fillStyle = g;
+      ctx.fill();
+      const h = ctx.createRadialGradient(57, 100, 2, 57, 98, 18);
+      h.addColorStop(0, css(0x0e0806));
+      h.addColorStop(1, css(0x3a2414));
+      ctx.fillStyle = h;
+      ctx.beginPath();
+      ctx.ellipse(57, 98, 14, 24, 0, 0, Math.PI * 2);
+      ctx.fill();
+      puffy(ctx, [[56, 30, 30], [30, 40, 20], [84, 38, 22], [56, 12, 18]], p.blossom, p.blossomLight, p.blossomDark);
+    },
+  },
+  iceCave: {
+    width: 126,
+    height: 86,
+    draw(ctx, p) {
+      puffy(ctx, [[30, 60, 28], [63, 44, 38], [98, 60, 28]], 0xf2f7fb, 0xffffff, p.grassDark ?? 0xc8d6e3);
+      const g = ctx.createRadialGradient(63, 74, 2, 63, 70, 26);
+      g.addColorStop(0, css(0x1e3450));
+      g.addColorStop(1, css(0x7fb6e6));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(63, 76, 24, 22, 0, Math.PI, Math.PI * 2);
+      ctx.lineTo(87, 86);
+      ctx.lineTo(39, 86);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = css(0xd8f0ff);
+      for (let x = 44; x < 84; x += 7) {
+        ctx.beginPath();
+        ctx.moveTo(x, 56);
+        ctx.lineTo(x + 5, 56);
+        ctx.lineTo(x + 2.5, 66 + (x % 3) * 2);
+        ctx.closePath();
+        ctx.fill();
       }
     },
   },
@@ -442,40 +801,12 @@ const HIDE_TEXTURES = {
 export function createSeasonTextures(scene, season) {
   const p = season.palette;
   const k = season.key;
-
-  if (p.treeStyle === 'pine') {
-    // Snowy pine: dark green tiers with snow on each.
-    makeTexture(scene, `tree-${k}`, 140, 170, (g) => {
-      g.fillStyle(p.trunk).fillRect(64, 140, 12, 30);
-      for (let i = 0; i < 4; i++) {
-        const y = 30 + i * 30;
-        const half = 26 + i * 12;
-        g.fillStyle(p.blossomDark).fillTriangle(70 - half, y + 44, 70 + half, y + 44, 70, y - 6);
-        g.fillStyle(p.blossom).fillTriangle(70 - half + 6, y + 40, 70 + half - 6, y + 40, 70, y);
-        g.fillStyle(p.blossomLight).fillTriangle(70 - half * 0.55, y + 16, 70 + half * 0.55, y + 16, 70, y);
-      }
-    });
-  }
-  makeTexture(scene, `tree-${k}`, 140, 170, (g) => {
-    g.fillStyle(p.trunk);
-    g.fillPoints([{ x: 63, y: 170 }, { x: 77, y: 170 }, { x: 73, y: 80 }, { x: 67, y: 80 }], true);
-    g.lineStyle(6, p.trunk);
-    g.lineBetween(70, 118, 42, 84);
-    g.lineBetween(70, 104, 100, 76);
-    const blobs = [[70, 60, 38], [38, 80, 26], [102, 78, 28], [52, 40, 26], [90, 42, 28], [70, 88, 26]];
-    g.fillStyle(p.blossomDark);
-    blobs.forEach(([x, y, r]) => g.fillCircle(x, y + 5, r));
-    g.fillStyle(p.blossom);
-    blobs.forEach(([x, y, r]) => g.fillCircle(x, y, r - 2));
-    g.fillStyle(p.blossomLight);
-    blobs.forEach(([x, y, r]) => g.fillCircle(x - r * 0.3, y - r * 0.35, r * 0.4));
-    const rnd = seededRandom(7);
-    g.fillStyle(p.treeSpeckle ?? 0xffffff, 0.8);
-    for (let i = 0; i < 26; i++) g.fillCircle(20 + rnd() * 100, 20 + rnd() * 90, 1.6);
-  });
-
+  const style = p.treeStyle ?? (k === 'fall' ? 'autumn' : k === 'spring' ? 'blossom' : 'leafy');
+  paintTexture(scene, `tree-${k}`, 140, 172, (ctx) => paintTree(ctx, p, style), { outline: 2 });
   for (const kind of season.hidingSpots ?? []) {
     const spec = HIDE_TEXTURES[kind];
-    if (spec) makeTexture(scene, `hide-${kind}-${k}`, spec.width, spec.height, (g) => spec.draw(g, p));
+    if (spec) paintTexture(scene, `hide-${kind}-${k}`, spec.width, spec.height, (ctx) => spec.draw(ctx, p), { outline: 2 });
   }
 }
+
+export { paintTree };

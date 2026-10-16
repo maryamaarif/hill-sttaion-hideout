@@ -3,6 +3,7 @@ import { INK } from '../art/TextureFactory.js';
 import { textStyle } from './Hud.js';
 import SettingsPanel from './SettingsPanel.js';
 import { audio } from '../systems/AudioSystem.js';
+import { addPanel, setHot } from './Panels.js';
 
 // In-game pause menu (ESC or P): Resume, Restart season, Settings, Quit to menu.
 // ↑ ↓ choose, ENTER select, ESC / P resume. Settings opens on top and returns here.
@@ -46,11 +47,11 @@ export default class PauseMenu {
       return o;
     };
     fixed(scene.add.rectangle(0, 0, W, H, 0x1d2b3a, 0.6).setOrigin(0).setInteractive());
-    fixed(scene.add.rectangle(W / 2, H / 2, 320, 300, 0xfff4e6).setStrokeStyle(4, INK));
+    fixed(addPanel(scene, W / 2, H / 2, 320, 300, 'paper'));
     fixed(scene.add.text(W / 2, H / 2 - 112, 'Paused', textStyle(30)).setOrigin(0.5));
     this.buttons = this.actions.map((a, i) => {
       const y = H / 2 - 50 + i * 52;
-      const bg = fixed(scene.add.rectangle(W / 2, y, 240, 42, 0xfff4e6).setStrokeStyle(3, INK));
+      const bg = fixed(addPanel(scene, W / 2, y, 240, 42, 'plank'));
       fixed(scene.add.text(W / 2, y, a.label, { fontFamily: UI.font, fontSize: '19px', color: '#3b2a20' }).setOrigin(0.5));
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerover', () => this.select(i));
@@ -68,7 +69,7 @@ export default class PauseMenu {
 
   select(i) {
     this.selected = (i + this.actions.length) % this.actions.length;
-    this.buttons.forEach((b, j) => b.setFillStyle(j === this.selected ? 0xffd54f : 0xfff4e6));
+    this.buttons.forEach((b, j) => setHot(b, j === this.selected));
   }
 
   choose(i) {

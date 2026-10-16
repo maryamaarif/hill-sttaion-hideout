@@ -65,7 +65,18 @@ export default {
     tint: [0xe8692a, 0xc8401e, 0xf2b234, 0xd98a2b, 0x9e2f1a],
     alpha: { start: 1, end: 0.5 },
   },
+  // Lighting pass (art/Lighting.js): warm golden hour.
+  lighting: { vignette: 0.32, bloom: 0.16, light: 0xffc46a, lightAlpha: 0.26, tint: 0xffb060, tintAlpha: 0.1 },
   palette: {
+    groundStyle: 'dry',
+    skyMid: 0xc6c8c4,
+    sunX: 0.24,
+    sunY: 104,
+    mountain: 0x9a8aa0,
+    mountainSnow: 0xfbeee0,
+    haze: 0xf8d6ac,
+    lamp: 0xffcf7a,
+    lampsLit: true,
     skyTop: 0x7fb6dc,
     skyBottom: 0xfbd7a6,
     sun: 0xffe2a0,

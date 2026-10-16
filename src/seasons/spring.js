@@ -60,7 +60,23 @@ export default {
     scale: { min: 0.7, max: 1.3 },
     alpha: { start: 0.95, end: 0.4 },
   },
+  // Lighting pass (art/Lighting.js): soft and fresh.
+  lighting: { vignette: 0.22, bloom: 0.25, light: 0xfff2e0, lightAlpha: 0.22, tint: 0xffe4f0, tintAlpha: 0.06 },
   palette: {
+    // Painterly pass: ground style, distant mountains, sun placement, lamps.
+    groundStyle: 'grass',
+    skyMid: 0xcfe6f4,
+    sunX: 0.78,
+    sunY: 86,
+    mountain: 0x8fa7bf,
+    mountainSnow: 0xf6f9fc,
+    haze: 0xf4e4ee,
+    rock: 0xa8a39a,
+    rockLight: 0xcfcac0,
+    rockDark: 0x7a756d,
+    pit: 0x4a3426,
+    lamp: 0xffe2a8,
+    lampsLit: false,
     skyTop: 0xa9d8f2,
     skyBottom: 0xfde6ef,
     sun: 0xfff5d6,

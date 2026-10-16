@@ -4,6 +4,9 @@ import { COINS, UI } from '../config/game.js';
 import LivesSystem from '../systems/LivesSystem.js';
 import SaveSystem from '../systems/SaveSystem.js';
 import AudioSystem from '../systems/AudioSystem.js';
+import { SEASON_ORDER } from '../seasons/index.js';
+import { buildBackdrop } from '../art/Backdrop.js';
+import { addPanel } from '../ui/Panels.js';
 
 // All four seasons done: remaining lives are redeemed for coins, plus a speed bonus.
 export default class LevelCompleteScene extends Phaser.Scene {
@@ -26,9 +29,12 @@ export default class LevelCompleteScene extends Phaser.Scene {
     audio.playMusic('room');
     let lastTick = 0;
     this.cameras.main.fadeIn(500);
-    // Warm window glow: safe back at the guest house.
-    this.add.circle(W / 2, H / 2 - 40, 260, 0xffc861, 0.08);
-    this.add.circle(W / 2, H / 2 - 40, 170, 0xffc861, 0.08);
+    // Safe back at the guest house: the snowy evening outside, warm light within.
+    const winter = SEASON_ORDER[SEASON_ORDER.length - 1];
+    buildBackdrop(this, winter, W).forEach((o) => o.depth > -20 && o.setDepth(-20));
+    this.add.rectangle(0, 0, W, H, 0x1d1a2e, 0.5).setOrigin(0).setDepth(-19);
+    this.add.image(W / 2, H / 2 - 40, 'glow').setDisplaySize(620, 620).setTint(0xffc861).setAlpha(0.18).setDepth(-18);
+    addPanel(this, W / 2, 262, 560, 420, 'wood').setDepth(-17);
 
     this.add.text(W / 2, 70, `Level ${data.level} complete!`, textStyle(44)).setOrigin(0.5);
     this.add.text(W / 2, 118, 'Safe back at the guest house.', textStyle(20, { color: '#f3e6d0' })).setOrigin(0.5);
@@ -49,7 +55,7 @@ export default class LevelCompleteScene extends Phaser.Scene {
     });
 
     const total = this.add.text(W / 2, 350, `+0 coins`, textStyle(34, { color: '#ffd54f' })).setOrigin(0.5);
-    this.add.image(W / 2 - 110, 350, 'coin').setScale(1.5);
+    this.add.image(W / 2 - 110, 350, 'coin').setScale(0.75);
     const earned = lifeCoins + bonus;
     const counter = { value: 0 };
     this.tweens.add({

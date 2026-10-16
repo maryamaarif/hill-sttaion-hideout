@@ -1,5 +1,6 @@
 import { DEPTH } from '../config/game.js';
 import { seededRandom } from '../art/TextureFactory.js';
+import { paintTexture, trackForCleanup, addArt, css, shade, vGradient, contactShadow } from '../art/Paint.js';
 import HidingSpot from '../entities/HidingSpot.js';
 
 // Leaf piles (layout.leafPiles) that all look alike:
@@ -46,27 +47,51 @@ export default class LeafSystem {
   build(def, groundY, p) {
     const { x, w, kind } = def;
     const h = kind === 'hide' ? 44 : 26;
-    const g = this.scene.add.graphics().setDepth(DEPTH.foreground);
     const rnd = seededRandom(x);
-    if (kind === 'pit') {
-      // A fake lid of ground over the hole, so a pit pile looks like any other.
-      // It thins out with the leaves during a gust, revealing the hole.
-      const hole = def.hole ?? w - 26;
-      const depth = this.scene.scale.height - groundY;
-      g.fillStyle(p.dirt).fillRect(-hole / 2 - 4, 0, hole + 8, depth);
-      g.fillStyle(p.grassDark).fillRect(-hole / 2 - 4, 6, hole + 8, 5);
-      g.fillStyle(p.grass).fillRect(-hole / 2 - 4, -4, hole + 8, 11);
-    }
-    // A mound of overlapping leaves, darker at the base.
-    for (let i = 0; i < w * 0.9; i++) {
-      const t = rnd();
-      const lx = (t - 0.5) * w;
-      const maxH = h * Math.sqrt(1 - (2 * t - 1) ** 2);
-      const ly = -rnd() * maxH;
-      g.fillStyle(p.leaves[Math.floor(rnd() * p.leaves.length)], 0.95);
-      g.fillEllipse(lx, ly, 12, 7);
-    }
-    g.setPosition(x, groundY + 2);
+    // Painted once: a mound of shaded leaves (and for a pit, a fake lid of ground).
+    const depth = kind === 'pit' ? this.scene.scale.height - groundY : 6;
+    const hole = def.hole ?? w - 26;
+    const top = h + 10;
+    const key = `leafpile-${kind}-${x}-${Math.random().toString(36).slice(2, 6)}`;
+    paintTexture(this.scene, key, w + 24, top + depth, (ctx) => {
+      ctx.translate(w / 2 + 12, top);
+      if (kind === 'pit') {
+        const lid = { ...p, groundStyle: 'dry' };
+        vGradient(ctx, -hole / 2 - 4, 4, hole + 8, depth - 4, [[0, lid.dirt], [1, lid.dirtDark]]);
+        vGradient(ctx, -hole / 2 - 4, -2, hole + 8, 10, [[0, shade(lid.grass, 1.1)], [1, lid.grassDark]]);
+      }
+      contactShadow(ctx, 0, 2, w * 0.55, 5, 0.35);
+      for (let i = 0; i < w * 1.1; i++) {
+        const t = rnd();
+        const lx = (t - 0.5) * w;
+        const maxH = h * Math.sqrt(1 - (2 * t - 1) ** 2);
+        const ly = -rnd() * maxH;
+        const c = p.leaves[Math.floor(rnd() * p.leaves.length)];
+        // Lower leaves sit in shade.
+        const lit = shade(c, 0.75 + 0.45 * (-ly / Math.max(1, h)));
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(rnd() * Math.PI);
+        const g = ctx.createLinearGradient(0, -4, 0, 4);
+        g.addColorStop(0, css(shade(lit, 1.2)));
+        g.addColorStop(1, css(shade(lit, 0.8)));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 6.5, 3.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = css(shade(lit, 0.6), 0.7);
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(-5, 0);
+        ctx.lineTo(5, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }, { outline: 2 });
+    trackForCleanup(this.scene, key);
+    const g = addArt(this.scene, x, groundY + 2, key)
+      .setOrigin((w / 2 + 12) / (w + 24), top / (top + depth))
+      .setDepth(DEPTH.foreground);
 
     let spot = null;
     if (kind === 'hide') {

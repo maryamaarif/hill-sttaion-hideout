@@ -2,6 +2,7 @@
 import { UI } from '../config/game.js';
 import AudioSystem from '../systems/AudioSystem.js';
 import { textStyle } from '../ui/Hud.js';
+import { addPanel, setHot } from '../ui/Panels.js';
 
 export function addScreenText(scene, title, lines = []) {
   const { width, height } = scene.scale;
@@ -23,9 +24,9 @@ export function createMenu(scene, x, y, items, spacing = 64) {
   let done = false;
 
   const buttons = items.map((item, i) => {
-    const bg = scene.add.rectangle(x, y + i * spacing, 260, 48, 0xfff4e6).setStrokeStyle(4, 0x3b2a20);
+    const bg = addPanel(scene, x, y + i * spacing, 260, 50, 'plank');
     const label = scene.add
-      .text(x, y + i * spacing, item.label, { fontFamily: UI.font, fontSize: '24px', color: '#3b2a20' })
+      .text(x, y + i * spacing - 2, item.label, { fontFamily: UI.font, fontSize: '23px', color: '#3b2a20', fontStyle: '800' })
       .setOrigin(0.5);
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => select(i));
@@ -43,8 +44,8 @@ export function createMenu(scene, x, y, items, spacing = 64) {
     selected = (i + items.length) % items.length;
     buttons.forEach(({ bg, label }, j) => {
       const on = j === selected;
-      bg.setFillStyle(on ? 0xffd54f : 0xfff4e6);
-      bg.setScale(on ? 1.06 : 1);
+      setHot(bg, on);
+      bg.setPanelScale(on ? 1.06 : 1);
       label.setScale(on ? 1.06 : 1);
     });
   }

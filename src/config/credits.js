@@ -8,6 +8,6 @@ export const CREDITS = [
   { line: 'All art and audio were made by the team during the event' },
   { heading: 'Third-party' },
   { line: 'Phaser 3.80.1 game framework (MIT licence), via jsDelivr' },
-  { line: 'Fonts: your system\'s Trebuchet MS / Verdana (none bundled)' },
+  { line: 'Fonts: Lora and Nunito via Google Fonts (SIL Open Font License)' },
   { line: 'Emoji icons are drawn by your system\'s emoji font' },
 ];

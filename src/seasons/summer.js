@@ -72,6 +72,18 @@ export default {
     { key: 'canoe', name: 'Canoe Run', hint: 'Jump the snags. Reeds hide you.' },
     { key: 'swim', name: 'Lake Swim', hint: 'Hold ↓ to dive. Watch your breath!' },
   ],
+  // Sunlit dust motes drifting low over the ground.
+  ambientExtra: [{
+    texture: 'dust',
+    frequency: 140,
+    lifespan: 5000,
+    y: { min: 300, max: 500 },
+    speedX: { min: 6, max: 24 },
+    speedY: { min: -10, max: 4 },
+    scale: { min: 0.5, max: 1.3 },
+    alpha: { values: [0, 0.75, 0] },
+    tint: 0xfff2c4,
+  }],
   ambient: {
     texture: 'seed',
     frequency: 380,
@@ -83,7 +95,18 @@ export default {
     scale: { min: 0.7, max: 1.2 },
     alpha: { start: 0.9, end: 0 },
   },
+  // Lighting pass (art/Lighting.js): bright and saturated.
+  lighting: { vignette: 0.22, bloom: 0.16, light: 0xfff6c0, lightAlpha: 0.2 },
   palette: {
+    groundStyle: 'grass',
+    skyMid: 0x6cc0f4,
+    sunX: 0.82,
+    sunY: 70,
+    mountain: 0x7f9fc0,
+    mountainSnow: 0xf2f7fb,
+    haze: 0xd8f1ff,
+    lamp: 0xfff0b0,
+    lampsLit: false,
     skyTop: 0x1f93ec,
     skyBottom: 0xc4ecff,
     sun: 0xfff27a,

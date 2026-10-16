@@ -4,6 +4,7 @@ import { textStyle } from './Hud.js';
 import { addKeycap } from './KeyIcons.js';
 import { audio } from '../systems/AudioSystem.js';
 import Settings, { ACTION_LABELS, RESERVED_KEYS } from '../systems/Settings.js';
+import { addPanel, setHot } from './Panels.js';
 
 const W = 480;
 const ROW = 40;
@@ -101,7 +102,7 @@ export default class SettingsPanel {
     };
 
     add(scene.add.rectangle(0, 0, SW, SH, 0x1d2b3a, 0.6).setOrigin(0).setInteractive());
-    add(scene.add.rectangle(cx, SH / 2, W, H, 0xfff4e6).setStrokeStyle(4, INK));
+    add(addPanel(scene, cx, SH / 2, W, H, 'paper'));
     add(scene.add.text(cx, top + 28, this.page === 'controls' ? 'Controls' : this.title, textStyle(26)).setOrigin(0.5));
     this.hint = add(scene.add.text(cx, top + H - 20, '', this.ink(13)).setOrigin(0.5));
 

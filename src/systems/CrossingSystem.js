@@ -1,4 +1,5 @@
 import { DEPTH } from '../config/game.js';
+import { paintTexture, trackForCleanup, addArt, css, shade, vGradient, roundRect, contactShadow } from '../art/Paint.js';
 
 const TRAIN_HEIGHT = 150;
 const TRAIN_SPEED = 900; // px/s the wagons stream past
@@ -23,31 +24,60 @@ export default class CrossingSystem {
     const { scene, groundY } = this;
     const { x, w } = def;
 
-    // Track receding into the distance: sleepers narrowing, two converging rails.
-    const g = scene.add.graphics().setDepth(DEPTH.decorBack);
-    g.fillStyle(p.dirtDark).fillRect(x, groundY - 4, w, 16);
-    for (let i = 0; i < 7; i++) {
-      const t = i / 6;
-      const y = groundY + 8 - t * 92;
-      const half = (w / 2 - 6) * (1 - t * 0.8);
-      g.fillStyle(p.woodDark, 1 - t * 0.6).fillRect(x + w / 2 - half, y, half * 2, 5 - t * 3);
-    }
-    g.lineStyle(3, 0x6d6d73);
-    g.lineBetween(x + 14, groundY + 10, x + w / 2 - 6, groundY - 86);
-    g.lineBetween(x + w - 14, groundY + 10, x + w / 2 + 6, groundY - 86);
-
-    // Signal post with crossbuck and lamp.
-    const post = scene.add.graphics().setDepth(DEPTH.decor);
+    // Track receding into the distance (sleepers narrowing, converging rails) and a
+    // signal post with a crossbuck: painted once.
     const px = x - 12;
-    post.fillStyle(0x2a2a2e).fillRect(px - 2, groundY - 96, 5, 96);
-    post.lineStyle(5, 0xffffff).lineBetween(px - 14, groundY - 104, px + 14, groundY - 88);
-    post.lineBetween(px - 14, groundY - 88, px + 14, groundY - 104);
-    post.fillStyle(0x1e1e22).fillRoundedRect(px - 10, groundY - 80, 20, 22, 5);
+    const key = `crossing-${x}-${Math.random().toString(36).slice(2, 6)}`;
+    const left = px - 24;
+    const top = groundY - 112;
+    paintTexture(scene, key, x + w - left + 4, groundY + 16 - top, (ctx) => {
+      ctx.translate(-left, -top);
+      vGradient(ctx, x, groundY - 4, w, 16, [[0, p.dirtDark], [1, shade(p.dirtDark, 0.75)]]);
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6;
+        const y = groundY + 8 - t * 92;
+        const half = (w / 2 - 6) * (1 - t * 0.8);
+        ctx.globalAlpha = 1 - t * 0.6;
+        vGradient(ctx, x + w / 2 - half, y, half * 2, 5 - t * 3, [[0, shade(p.woodDark, 1.25)], [1, p.woodDark]]);
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'round';
+      for (const [w1, c] of [[3.5, 0x4a4d55], [1.4, 0xd8dde3]]) {
+        ctx.strokeStyle = css(c);
+        ctx.lineWidth = w1;
+        ctx.beginPath();
+        ctx.moveTo(x + 14, groundY + 10);
+        ctx.lineTo(x + w / 2 - 6, groundY - 86);
+        ctx.moveTo(x + w - 14, groundY + 10);
+        ctx.lineTo(x + w / 2 + 6, groundY - 86);
+        ctx.stroke();
+      }
+      contactShadow(ctx, px, groundY, 14, 3, 0.35);
+      vGradient(ctx, px - 3, groundY - 96, 6, 96, [[0, 0x55585f], [1, 0x24252a]]);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = css(0x3b2a20);
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.beginPath();
+        ctx.moveTo(px - 14, groundY - 104);
+        ctx.lineTo(px + 14, groundY - 88);
+        ctx.moveTo(px - 14, groundY - 88);
+        ctx.lineTo(px + 14, groundY - 104);
+        ctx.stroke();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = css(0xffffff);
+      }
+      roundRect(ctx, px - 10, groundY - 80, 20, 22, 5);
+      ctx.fillStyle = css(0x1e1e22);
+      ctx.fill();
+    }, { outline: 1 });
+    trackForCleanup(scene, key);
+    addArt(scene, left, top, key).setOrigin(0).setDepth(DEPTH.decorBack);
     const lamp = scene.add.graphics().setDepth(DEPTH.decor + 1);
 
     const tile = scene.add
       .tileSprite(x, groundY - TRAIN_HEIGHT + 8, w, TRAIN_HEIGHT, 'crossing-train')
       .setOrigin(0, 0)
+      .setTileScale(0.5) // painted at 2×
       .setDepth(DEPTH.foreground)
       .setVisible(false);
 

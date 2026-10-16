@@ -2,6 +2,9 @@ import { createMenu } from './ui.js';
 import { textStyle, createHearts } from '../ui/Hud.js';
 import { newLevelRun } from '../systems/RunState.js';
 import { UI } from '../config/game.js';
+import { SEASON_ORDER } from '../seasons/index.js';
+import { buildBackdrop } from '../art/Backdrop.js';
+import { addPanel } from '../ui/Panels.js';
 
 const MESSAGES = {
   caught: 'A plain-clothes officer recognised you.',
@@ -22,6 +25,11 @@ export default class GameOverScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     this.cameras.main.setBackgroundColor(UI.screenBg);
     this.cameras.main.fadeIn(400);
+    // The season where it ended, dimmed, behind a wooden board.
+    const season = SEASON_ORDER.find((s) => s.key === data.seasonKey) ?? SEASON_ORDER[0];
+    buildBackdrop(this, season, W).forEach((o) => o.depth > -20 && o.setDepth(-20));
+    this.add.rectangle(0, 0, W, H, 0x1d1a2e, 0.55).setOrigin(0).setDepth(-19);
+    addPanel(this, W / 2, H / 2 - 30, 520, 340, 'wood').setDepth(-18);
 
     this.add.text(W / 2, H / 2 - 120, 'Out of lives', textStyle(48)).setOrigin(0.5);
     this.add

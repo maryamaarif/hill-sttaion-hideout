@@ -34,7 +34,7 @@ export default class Train {
     this.parts.push({ dx: locoX, top: LOCO.cabRoof, w: LOCO.cabW, h: LOCO.cabRoof - 20 });
     this.parts.push({ dx: locoX + LOCO.cabW, top: LOCO.boiler, w: LOCO.w - LOCO.cabW, h: LOCO.boiler - 20 });
     this.images.push({ dx: locoX, top: LOCO.imageTop, img: scene.add.image(0, 0, 'train-loco') });
-    this.images.forEach(({ img }) => img.setOrigin(0, 0).setDepth(DEPTH.terrain + 1));
+    this.images.forEach(({ img }) => img.setOrigin(0, 0).setScale(0.5).setDepth(DEPTH.terrain + 1)); // painted at 2×
 
     this.zones = this.parts.map((part) => {
       const zone = scene.add.zone(0, 0, part.w, part.h);

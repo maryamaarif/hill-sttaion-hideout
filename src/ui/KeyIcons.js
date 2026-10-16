@@ -1,6 +1,7 @@
 import { UI } from '../config/game.js';
 import { INK } from '../art/TextureFactory.js';
 import Settings from '../systems/Settings.js';
+import { addPanel, setHot } from './Panels.js';
 
 // Small keyboard-key icons ("keycaps") used instead of written instructions.
 // They always show the player's current key for an action (controls can be remapped).
@@ -20,9 +21,8 @@ export function addKeycap(scene, x, y, name) {
   const label = keyLabel(name);
   const w = Math.max(30, label.length * 11 + 16);
   const c = scene.add.container(x, y);
-  c.add(scene.add.rectangle(0, 3, w, 28, INK).setOrigin(0.5)); // key side
-  c.add(scene.add.rectangle(0, 0, w, 26, 0xfff4e6).setOrigin(0.5).setStrokeStyle(2, INK));
-  c.add(scene.add.text(0, 0, label, { fontFamily: UI.font, fontSize: '16px', color: '#3b2a20', fontStyle: 'bold' }).setOrigin(0.5));
+  c.add(addPanel(scene, 0, 1, w + 2, 32, 'key'));
+  c.add(scene.add.text(0, -1, label, { fontFamily: UI.font, fontSize: '16px', color: '#3b2a20', fontStyle: 'bold' }).setOrigin(0.5));
   c.setSize(w, 28);
   return c;
 }

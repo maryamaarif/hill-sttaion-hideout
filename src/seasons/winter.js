@@ -70,6 +70,7 @@ export default {
     { key: 'ski-jump', name: 'Ski Jump', hint: 'Full speed off the ramp, then HOLD jump!' },
     { key: 'blizzard', name: 'Blizzard', hint: 'They follow footprints. Hide in huts and drifts.' },
   ],
+  breath: { everyMs: 1500 }, // breath vapour puffs
   ambient: {
     texture: 'snowflake',
     frequency: 90,
@@ -79,7 +80,19 @@ export default {
     scale: { min: 0.5, max: 1.3 },
     alpha: { min: 0.6, max: 1 },
   },
+  // Lighting pass (art/Lighting.js): cool blue.
+  lighting: { vignette: 0.3, bloom: 0.2, light: 0xe6f2ff, lightAlpha: 0.2, tint: 0xa8c4e8, tintAlpha: 0.12 },
   palette: {
+    groundStyle: 'snow',
+    skyMid: 0xc3d2de,
+    sunX: 0.7,
+    sunY: 96,
+    mountain: 0x8697ab,
+    mountainSnow: 0xffffff,
+    haze: 0xe4ecf3,
+    lamp: 0xffc861,
+    lampsLit: true,
+    snowRoof: true,
     skyTop: 0x9fb6c9,
     skyBottom: 0xe8eff5,
     sun: 0xf6f8fb,

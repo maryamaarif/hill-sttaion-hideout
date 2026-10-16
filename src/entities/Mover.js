@@ -22,7 +22,7 @@ export default class Mover {
       .image(0, 0, `mover-${def.kind}`)
       .setOrigin(0, 0)
       .setDepth(this.canoe ? DEPTH.water + 1 : DEPTH.terrain);
-    this.image.setDisplaySize(this.w, this.image.height);
+    this.image.setDisplaySize(this.w, this.image.height / 2); // painted at 2×
 
     this.zone = scene.add.zone(0, 0, this.w, 12);
     this.zones = [this.zone]; // collision zones (a Train has several)

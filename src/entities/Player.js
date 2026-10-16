@@ -2,8 +2,12 @@ import { PLAYER, DEPTH, RESPAWN } from '../config/game.js';
 import { CHAR_FRAME, buildOutfit } from '../art/Character.js';
 import { addOutline } from '../art/TextureFactory.js';
 
-const WALK_CYCLE = ['walk1', 'idle', 'walk2', 'idle'];
 import Settings from '../systems/Settings.js';
+
+const RUN_CYCLE = ['run1', 'run2', 'run3', 'run4', 'run5', 'run6'];
+const IDLE_CYCLE = ['idle', 'idle2']; // slow breathing
+// Character art is painted at 2× and shown at half size.
+const BASE_SCALE = 0.5;
 
 const moveTowards = (value, target, maxDelta) =>
   Math.abs(target - value) <= maxDelta ? target : value + Math.sign(target - value) * maxDelta;
@@ -27,6 +31,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, 'pl-home-idle');
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    this.setScale(BASE_SCALE);
+    this.setOrigin(0.5, 0.5);
 
     this.seasonPhysics = season.physics;
     this.swimConfig = season.swim ?? null;
@@ -83,8 +89,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   setStandingBody(standing) {
     const { width, height, crouchHeight } = PLAYER.body;
     const h = standing ? height : crouchHeight;
-    this.body.setSize(width, h);
-    this.body.setOffset((CHAR_FRAME.width - width) / 2, CHAR_FRAME.height - h);
+    // Body sizes are in texture pixels (scaled by the sprite), so ×2 for 2× art.
+    const k = 1 / BASE_SCALE;
+    this.body.setSize(width * k, h * k);
+    this.body.setOffset(((CHAR_FRAME.width - width) / 2) * k, (CHAR_FRAME.feet - h) * k);
   }
 
   get onGround() {
@@ -248,7 +256,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   // Poses are textures of the current outfit; the run cycle steps through frames.
   showPose(pose) {
-    const frame = pose === 'walk' ? WALK_CYCLE[Math.floor(this.scene.time.now / PLAYER.walkFrameMs) % WALK_CYCLE.length] : pose;
+    const now = this.scene.time.now;
+    let frame = pose;
+    if (pose === 'walk') frame = RUN_CYCLE[Math.floor(now / PLAYER.walkFrameMs) % RUN_CYCLE.length];
+    else if (pose === 'idle') frame = IDLE_CYCLE[Math.floor(now / 700) % IDLE_CYCLE.length];
     this.currentPose = frame;
     this.setTexture(`${this.texPrefix ?? 'pl-home'}-${frame}`);
   }
@@ -357,14 +368,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.setAlpha(0.6).setTint(0x8a96a8);
     this.scene.events.emit('player-hide', this);
     if (spot.tuck) this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });
-    this.scene.tweens.add({ targets: this, scaleY: 0.85, duration: 140, yoyo: true });
+    this.scene.tweens.add({ targets: this, scaleY: BASE_SCALE * 0.85, duration: 140, yoyo: true });
   }
 
   leaveHiding() {
     if (!this.hidden || this.swimming) return;
     this.hidden = false;
     this.hidingSpot = null;
-    this.setAlpha(1).clearTint().setScale(1);
+    this.setAlpha(1).clearTint().setScale(BASE_SCALE);
   }
 
   // ----- lifecycle -----
