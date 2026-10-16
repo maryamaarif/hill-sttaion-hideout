@@ -1,4 +1,4 @@
-import { PLAYER, DEPTH } from '../config/game.js';
+import { PLAYER, DEPTH, RESPAWN } from '../config/game.js';
 import { PLAYER_FRAME } from '../art/TextureFactory.js';
 
 const moveTowards = (value, target, maxDelta) =>
@@ -29,6 +29,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpCut = false;
     this.crouching = false;
     this.hidden = false;
+    this.hidingSpot = null;
+    this.nearSpot = null; // set by the scene each frame
+    this.graceUntil = 0;
     this.frozen = false;
     this.lockedUntil = 0;
   }
@@ -60,6 +63,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const jumpHeld = k.up.isDown || k.w.isDown || k.space.isDown;
     const jumpPressed = JustDown(k.up) || JustDown(k.w) || JustDown(k.space);
     const grounded = this.onGround;
+    const dir = (right ? 1 : 0) - (left ? 1 : 0);
+
+    // Hiding: press Down in a hiding spot. Moving or jumping leaves it.
+    if (this.hidden) {
+      if (dir === 0 && !jumpPressed) {
+        this.setVelocityX(0);
+        return;
+      }
+      this.leaveHiding();
+    } else if (down && dir === 0 && grounded && this.nearSpot) {
+      this.enterHiding(this.nearSpot);
+      return;
+    }
 
     if (grounded && this.body.velocity.y >= 0) {
       this.lastGroundedAt = time;
@@ -94,7 +110,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Horizontal: accelerate toward target speed. Season friction scales grip.
-    const dir = (right ? 1 : 0) - (left ? 1 : 0);
     const maxSpeed = this.seasonPhysics.runSpeed * (this.crouching ? PLAYER.crouchSpeedMultiplier : 1);
     const grip = grounded ? (this.seasonPhysics.friction ?? 1) : PLAYER.airControl;
     const rate = (dir !== 0 ? PLAYER.acceleration : PLAYER.deceleration) * grip;
@@ -119,9 +134,25 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  setHidden(hidden) {
-    this.hidden = hidden;
-    this.setAlpha(hidden ? 0.45 : 1);
+  // Dim and tuck into the spot.
+  enterHiding(spot) {
+    this.hidden = true;
+    this.hidingSpot = spot;
+    this.crouching = true;
+    this.setStandingBody(false);
+    this.setVelocityX(0);
+    this.anims.stop();
+    this.setTexture('player-crouch');
+    this.setAlpha(0.6).setTint(0x8a96a8);
+    this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });
+    this.scene.tweens.add({ targets: this, scaleY: 0.85, duration: 140, yoyo: true });
+  }
+
+  leaveHiding() {
+    if (!this.hidden) return;
+    this.hidden = false;
+    this.hidingSpot = null;
+    this.setAlpha(1).clearTint().setScale(1);
   }
 
   freeze() {
@@ -135,7 +166,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(0, 0);
     this.crouching = false;
     this.setStandingBody(true);
-    this.setHidden(false);
+    this.leaveHiding();
+    this.graceUntil = time + RESPAWN.graceMs;
     this.setFlipX(false);
     this.setVisible(true);
     this.frozen = false;

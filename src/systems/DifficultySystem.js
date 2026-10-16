@@ -22,10 +22,11 @@ export default class DifficultySystem {
     };
   }
 
+  // Season base settings × level multipliers. visionAngleDeg and pauseMs are not scaled.
   static policeSettings(seasonPolice, level) {
     const d = DifficultySystem.forLevel(level);
     return {
-      count: seasonPolice.count + d.policeCountBonus,
+      ...seasonPolice,
       patrolSpeed: seasonPolice.patrolSpeed * d.patrolSpeedMultiplier,
       visionLength: seasonPolice.visionLength * d.visionLengthMultiplier,
       detectionTime: seasonPolice.detectionTime / d.detectionSpeedMultiplier,

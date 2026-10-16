@@ -6,7 +6,7 @@ export default {
   palette: { skyTop: 0xf4d6a0, grass: 0x8a5a2b, accent: 0xd9531e },
   physics: { gravity: 900, runSpeed: 200, jumpVelocity: 430, friction: 1.0 },
   visibility: 1.0,
-  police: { count: 3, patrolSpeed: 65, visionLength: 190, detectionTime: 1.7 },
+  police: { patrolSpeed: 65, visionLength: 190, visionAngleDeg: 40, detectionTime: 1.7, pauseMs: 1100 },
   hidingSpots: ['carriage', 'leaf-pile'],
   trainSpeed: 120,
   hurdles: [

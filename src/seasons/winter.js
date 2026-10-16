@@ -7,7 +7,7 @@ export default {
   physics: { gravity: 900, runSpeed: 240, jumpVelocity: 420, friction: 0.15 },
   visibility: 1.0,
   blizzardVisibility: 0.35,
-  police: { count: 3, patrolSpeed: 55, visionLength: 200, detectionTime: 1.8 },
+  police: { patrolSpeed: 55, visionLength: 200, visionAngleDeg: 40, detectionTime: 1.8, pauseMs: 1200 },
   hidingSpots: ['snow-hut'],
   hurdles: [
     { key: 'slalom', name: 'Slalom' },

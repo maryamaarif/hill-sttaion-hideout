@@ -44,6 +44,24 @@ export const RESPAWN = {
   dropHeight: 80, // respawn this far above ground
   offsetX: 40, // respawn this far past the checkpoint line
   killMarginY: 60, // fall this far below the screen = failed
+  graceMs: 1200, // police cannot see the player this long after respawning
+};
+
+// Shared officer behaviour. Speed, cone size and detection time come from the
+// season config scaled by the level (see DifficultySystem).
+export const POLICE = {
+  eyeHeight: 40, // cone origin above the ground
+  coneTiltDeg: 7, // cone aims slightly down toward the path
+  coneStepDeg: 4, // arc smoothness when drawing
+  drainRate: 1.3, // meter empties this many times faster than it fills
+  alarmAt: 0.6, // meter level where "?" turns into "!"
+  stopWhenSuspicious: true, // officer halts while they can see the player
+  coneColor: 0xffe873,
+  coneEdgeColor: 0xd9a92b,
+  alertColor: 0xff5a4a,
+  coneAlpha: 0.38,
+  meterWidth: 36,
+  meterOffsetY: 64, // meter sits this far above the officer's feet
 };
 
 export const CAMERA = {
@@ -68,6 +86,8 @@ export const DEPTH = {
   decorBack: -10,
   terrain: 0,
   decor: 5,
+  cone: 6,
+  police: 9,
   player: 10,
   water: 15,
   foreground: 20,

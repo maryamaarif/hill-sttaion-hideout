@@ -23,12 +23,12 @@ Then open <http://localhost:8000>.
 |---|---|
 | ← → / A D | Move |
 | ↑ / W / Space | Jump |
-| ↓ / S | Hide at a hiding spot / dive |
+| ↓ / S | Hide in a bush or flower bed (move or jump to leave) |
 | Enter | Confirm on menus |
 
 ### What's playable
 
-- **Spring** is a full stage: three hurdles (Meadow Walk, Stepping Stones, Flower Garden), ending at the Garden Gate.
+- **Spring** is a full stage: three hurdles (Meadow Walk, Stepping Stones, Flower Garden), ending at the Garden Gate. Plain-clothes officers (look for the sunglasses) patrol the garden: stay out of their vision cones or hide.
 - Summer, Fall and Winter are placeholders for now: press **N** to skip them.
 - Every screen shows which key continues.
 

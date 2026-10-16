@@ -26,6 +26,48 @@ const LEG_POSES = {
   crouch: [[8, 43, 6, 3], [18, 43, 6, 3]],
 };
 
+export const POLICE_FRAME = { width: 32, height: 50 };
+
+// Plain-clothes officer: ordinary polo shirt and slacks. The tell that never
+// changes between seasons is the black sunglasses with a white glint.
+const POLICE_COLORS = {
+  hair: 0x2b2018,
+  skin: 0xd9a77e,
+  glasses: 0x111111,
+  glint: 0xffffff,
+  shirt: 0xe0a83a,
+  shirtDark: 0xb98428,
+  collar: 0xf6e7c1,
+  trousers: 0x7a5c44,
+  shoes: 0x2a2a2a,
+};
+
+const POLICE_LEGS = {
+  idle: [[12, 40, 4, 8], [17, 40, 4, 8]],
+  walk1: [[9, 40, 4, 8], [19, 40, 4, 8]],
+  walk2: [[13, 40, 4, 8], [16, 40, 4, 7]],
+};
+
+function drawPolice(g, pose) {
+  const C = POLICE_COLORS;
+  for (const [x, y, w, h] of POLICE_LEGS[pose]) {
+    g.fillStyle(C.trousers).fillRect(x, y, w, h);
+    g.fillStyle(C.shoes).fillRect(x, y + h, w + 2, 2);
+  }
+  g.fillStyle(C.trousers).fillRect(10, 33, 12, 8); // hips
+  g.fillStyle(C.shirt).fillPoints([{ x: 10, y: 17 }, { x: 22, y: 17 }, { x: 23, y: 34 }, { x: 9, y: 34 }], true);
+  g.fillStyle(C.collar).fillRect(12, 16, 9, 3);
+  g.fillStyle(C.shirtDark).fillRect(16, 19, 4, 8); // sleeve
+  g.fillStyle(C.skin).fillRect(16, 27, 4, 6); // forearm
+  g.fillStyle(C.skin).fillRect(13, 14, 6, 3); // neck
+  g.fillStyle(C.skin).fillRect(11, 4, 11, 11); // head
+  g.fillStyle(C.hair).fillRect(10, 2, 12, 4);
+  g.fillRect(10, 5, 3, 5);
+  g.fillStyle(C.glasses).fillRect(14, 8, 9, 3);
+  g.fillRect(12, 8, 2, 1); // arm of the glasses
+  g.fillStyle(C.glint).fillRect(20, 8, 2, 1);
+}
+
 function makeTexture(scene, key, width, height, draw) {
   if (scene.textures.exists(key)) return;
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
@@ -95,6 +137,10 @@ export function createCommonTextures(scene) {
     makeTexture(scene, `player-${pose}`, PLAYER_FRAME.width, PLAYER_FRAME.height, (g) => drawPlayer(g, pose));
   }
 
+  for (const pose of Object.keys(POLICE_LEGS)) {
+    makeTexture(scene, `police-${pose}`, POLICE_FRAME.width, POLICE_FRAME.height, (g) => drawPolice(g, pose));
+  }
+
   makeTexture(scene, 'heart-full', 22, 20, (g) => drawHeart(g, 0xe84a5f));
   makeTexture(scene, 'heart-empty', 22, 20, (g) => drawHeart(g, 0x000000));
 
@@ -111,6 +157,14 @@ export function createCommonTextures(scene) {
       key: 'player-walk',
       frames: [{ key: 'player-walk1' }, { key: 'player-idle' }, { key: 'player-walk2' }, { key: 'player-idle' }],
       frameRate: 10,
+      repeat: -1,
+    });
+  }
+  if (!scene.anims.exists('police-walk')) {
+    scene.anims.create({
+      key: 'police-walk',
+      frames: [{ key: 'police-walk1' }, { key: 'police-idle' }, { key: 'police-walk2' }, { key: 'police-idle' }],
+      frameRate: 6,
       repeat: -1,
     });
   }
@@ -151,6 +205,27 @@ export function createSeasonTextures(scene, season) {
     for (let i = 0; i < 9; i++) {
       g.fillStyle(p.flowers[i % p.flowers.length]);
       g.fillCircle(12 + rnd() * 76, 14 + rnd() * 36, 2.5);
+    }
+  });
+
+  // Tall, dense flower bed: tall enough to cover a crouching player.
+  makeTexture(scene, `hide-flowers-${k}`, 96, 44, (g) => {
+    g.fillStyle(p.dirtDark).fillRoundedRect(2, 36, 92, 8, 3);
+    const rnd = seededRandom(17);
+    for (let i = 0; i < 26; i++) {
+      const x = 6 + (i / 25) * 84 + (rnd() - 0.5) * 4;
+      const top = 8 + rnd() * 12;
+      g.lineStyle(3, p.grassDark).lineBetween(x, 40, x, top);
+      g.fillStyle(p.bushDark).fillEllipse(x + 3, 30 - rnd() * 6, 7, 13);
+    }
+    g.fillStyle(p.bush).fillRect(4, 28, 88, 10);
+    for (let i = 0; i < 22; i++) {
+      const x = 8 + (i / 21) * 80 + (rnd() - 0.5) * 6;
+      const y = 6 + rnd() * 14;
+      g.fillStyle(p.flowers[i % p.flowers.length]);
+      g.fillEllipse(x, y, 9, 11);
+      g.fillTriangle(x - 4.5, y - 2, x - 1.5, y - 8, x + 1, y - 2);
+      g.fillTriangle(x - 1, y - 2, x + 1.5, y - 8, x + 4.5, y - 2);
     }
   });
 }

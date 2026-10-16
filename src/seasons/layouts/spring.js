@@ -26,20 +26,29 @@ export default {
     { x: 1870, y: 450, w: 90, h: 14, kind: 'stone' },
     { x: 2050, y: 456, w: 90, h: 14, kind: 'stone' },
 
-    // Flower garden: raised planters and a trellis ledge.
-    { x: 2830, y: groundY - 40, w: 140, h: 40, kind: 'planter' },
-    { x: 3200, y: groundY - 52, w: 120, h: 52, kind: 'planter' },
-    { x: 3390, y: 362, w: 120, h: 16, kind: 'wood' },
-    { x: 3580, y: groundY - 40, w: 140, h: 40, kind: 'planter' },
+    // Flower garden: one raised planter between the two patrols.
+    { x: 3290, y: groundY - 44, w: 120, h: 44, kind: 'planter' },
   ],
 
   water: [{ x: 1600, w: 630 }],
 
+  // Garden teaches hiding without text: officer 1 waits facing away, then turns
+  // and walks toward the player as they enter, his cone reaching the first bush.
+  // The flower bed halfway along his route lets the player let him walk past.
   hidingSpots: [
-    { x: 2690, kind: 'bush' },
-    { x: 3080, kind: 'bush' },
+    { x: 2700, kind: 'bush' },
+    { x: 2990, kind: 'flowers' },
+    { x: 3520, kind: 'flowers' },
     { x: 3800, kind: 'bush' },
   ],
+
+  police: [
+    { from: 2800, to: 3150, startAt: 'to', waitFacing: 1, activateX: 2560 },
+    { from: 3580, to: 3880, startAt: 'to' },
+  ],
+
+  // Added from level 2 on (one per DifficultySystem policeCountBonus).
+  extraPolice: [{ from: 3150, to: 3470, startAt: 'from' }],
 
   trees: [140, 390, 1010, 1390, 2360, 2520, 3960, 4320],
 
@@ -48,10 +57,10 @@ export default {
     { x: 600, w: 90 },
     { x: 1220, w: 150 },
     { x: 2280, w: 120 },
-    { x: 2600, w: 200 },
-    { x: 2990, w: 190 },
-    { x: 3340, w: 220 },
-    { x: 3740, w: 260 },
+    { x: 2580, w: 60 },
+    { x: 2790, w: 140 },
+    { x: 3090, w: 160 },
+    { x: 3600, w: 150 },
     { x: 4060, w: 300 },
   ],
 
@@ -59,7 +68,6 @@ export default {
     { x: 150, text: '← → or A D to move' },
     { x: 420, text: 'SPACE or ↑ to jump' },
     { x: 1520, text: "Hop the stones. Don't fall in!" },
-    { x: 2590, text: 'Hold ↓ in a bush to hide' },
   ],
 
   // Trigger lines for each hurdle, keyed by the hurdle key in the season config.

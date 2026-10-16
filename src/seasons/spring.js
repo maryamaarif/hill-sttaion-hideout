@@ -8,12 +8,12 @@ export default {
   layout,
   physics: { gravity: 1250, runSpeed: 220, jumpVelocity: 530, friction: 1.0 },
   visibility: 1.0,
-  police: { count: 2, patrolSpeed: 50, visionLength: 160, detectionTime: 2.0 },
-  hidingSpots: ['bush'],
+  police: { patrolSpeed: 50, visionLength: 170, visionAngleDeg: 40, detectionTime: 2.0, pauseMs: 1500 },
+  hidingSpots: ['bush', 'flowers'],
   hurdles: [
     { key: 'meadow', name: 'Meadow Walk', hint: 'Walk and jump the fences' },
     { key: 'stepping-stones', name: 'Stepping Stones', hint: 'Falling in the stream costs a life' },
-    { key: 'flower-garden', name: 'Flower Garden', hint: 'Hold ↓ in a bush to hide' },
+    { key: 'flower-garden', name: 'Flower Garden', hint: 'Someone is watching the garden…' },
   ],
   ambient: {
     texture: 'petal',

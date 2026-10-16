@@ -51,9 +51,13 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 **Seasons must change the RULES, not just the visuals.** Movement, friction, visibility, hazards and hiding spots differ per season. Each season's config file in `src/seasons/` declares these differences.
 
 ### Police
-- Walk patrol routes and show a **visible vision cone**.
-- While the player is inside a cone, a **detection meter** fills. When it is full the player is caught. It drains when the player is out of sight.
-- **Hiding:** pressing **Down** at a hiding spot (bush, train carriage, snow hut, under water, etc.) hides the player. Police cannot see a hidden player.
+- **Plain-clothes officers** in ordinary clothes (polo shirt, slacks). Their consistent tell in every season is **black sunglasses with a white glint**: keep it on any seasonal outfit so players learn to spot them.
+- Each officer walks a **patrol route** between two x positions, pauses at each end, and turns around. Routes live in the season layout (`police`, plus `extraPolice` that is added one per `policeCountBonus` from level 2 on). A route can have `activateX`: the officer waits facing `waitFacing` until the player passes that x, which is how a teaching moment is staged.
+- A **semi-transparent vision cone** shows in front of each officer. While the player is inside it and not hidden, a **detection meter** above the officer fills (yellow **?** then red **!** at `POLICE.alarmAt`), and the officer stops to stare. When it is full, the player is caught. It drains when the player is out of sight.
+- Officer speed, cone length and detection time = **season config × level multipliers** (`DifficultySystem.policeSettings`). Cone length is also multiplied by the season's `visibility`. Shared behaviour constants are in `POLICE` in `src/config/game.js`.
+- **Hiding:** standing in a hiding spot (bush, flower bed, train carriage, snow hut, under water, etc.) and pressing **Down** hides the player: they dim and tuck in. Police cannot see a hidden player. **Moving or jumping leaves the spot.**
+- Getting caught costs a life and respawns the player at the start of the hurdle. All officers reset to their starting positions, and the player has a short grace period (`RESPAWN.graceMs`).
+- Spring teaches hiding **with no text**: the first garden officer waits facing away, then turns and walks toward the player as they enter. His cone reaches the first bush.
 
 ### Lives
 - Start Level 1 with **3 lives**.

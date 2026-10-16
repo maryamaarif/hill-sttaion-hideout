@@ -1,10 +1,11 @@
 import { DEPTH, UI } from '../config/game.js';
 
-// A place the player can hide by holding Down: bush, carriage, snow hut, etc.
+// A place the player can hide by pressing Down: bush, flower bed, carriage, snow hut, etc.
 // Drawn in front of the player so a hidden player sits "inside" it.
 export default class HidingSpot {
   constructor(scene, x, groundY, kind, seasonKey) {
     this.kind = kind;
+    this.x = x;
     this.image = scene.add
       .image(x, groundY + 2, `hide-${kind}-${seasonKey}`)
       .setOrigin(0.5, 1)

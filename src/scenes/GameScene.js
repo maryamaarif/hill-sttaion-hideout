@@ -5,11 +5,13 @@ import { buildBackdrop } from '../art/Backdrop.js';
 import buildLevel from '../systems/LevelBuilder.js';
 import HurdleSystem from '../systems/HurdleSystem.js';
 import LivesSystem from '../systems/LivesSystem.js';
+import DifficultySystem from '../systems/DifficultySystem.js';
 import Player from '../entities/Player.js';
+import Police from '../entities/Police.js';
 import Hud from '../ui/Hud.js';
 
 // One shared engine for every season. The season config + layout decide
-// physics, art, hazards and hurdles; this scene never special-cases a season.
+// physics, art, hazards, police and hurdles; this scene never special-cases a season.
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -39,8 +41,18 @@ export default class GameScene extends Phaser.Scene {
 
     this.player = new Player(this, layout.spawn.x, layout.spawn.y, physics);
     this.physics.add.collider(this.player, this.level.solids);
-    this.physics.add.overlap(this.player, this.level.hazards, () => this.failHurdle(true));
+    this.physics.add.overlap(this.player, this.level.hazards, () =>
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, message: '−1 life' }),
+    );
     this.physics.add.overlap(this.player, this.level.goalZone, () => this.reachGoal());
+
+    // Officers: layout routes (+ extra routes from level 2 on), season settings × level.
+    const policeSettings = DifficultySystem.policeSettings(this.season.police, data.level);
+    const bonus = DifficultySystem.forLevel(data.level).policeCountBonus;
+    const routes = [...(layout.police ?? []), ...(layout.extraPolice ?? []).slice(0, bonus)];
+    this.police = routes.map(
+      (route) => new Police(this, route, policeSettings, layout.groundY, this.season.visibility ?? 1),
+    );
 
     this.hud = new Hud(this, this.season.name, this.level.hurdles);
     this.hud.setLives(this.lives.lives);
@@ -77,19 +89,28 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this.player) return;
+    const playing = this.state === 'playing';
+    const spot = this.player.hidden
+      ? this.player.hidingSpot
+      : this.hidingSpots.find((s) => s.contains(this.player));
+    this.player.nearSpot = playing ? (spot ?? null) : null;
     this.player.update(time, delta);
     this.cameras.main.followOffset.x = this.player.flipX ? CAMERA.lookAheadX : -CAMERA.lookAheadX;
-    if (this.state !== 'playing') return;
 
-    const spot = this.hidingSpots.find((s) => s.contains(this.player));
-    this.player.setHidden(Boolean(spot) && this.player.crouching);
+    const catcher = this.police.find((officer) => officer.update(time, delta, this.player, playing));
+    if (!playing) return;
+
     this.hidingSpots.forEach((s) => {
       s.setPrompt(s === spot && !this.player.hidden);
-      s.setOccupied(s === spot && this.player.hidden);
+      s.setOccupied(s === this.player.hidingSpot);
     });
     this.hud.setHidden(this.player.hidden);
 
-    if (this.player.y > this.scale.height + RESPAWN.killMarginY) this.failHurdle(false);
+    if (catcher) {
+      this.loseLife({ amount: LIVES.lossOnCaught, message: 'Caught!', banner: 'Spotted!' });
+    } else if (this.player.y > this.scale.height + RESPAWN.killMarginY) {
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, message: '−1 life' });
+    }
   }
 
   startHurdle(i, hurdle) {
@@ -106,12 +127,15 @@ export default class GameScene extends Phaser.Scene {
     this.hud.setBetweenHurdles(next ? `${hurdle.name} cleared!` : 'Head for the exit →');
   }
 
-  failHurdle(splash) {
+  // Caught by police or failed a hurdle: lose a life, respawn at the hurdle start.
+  loseLife({ amount, splash = false, message, banner }) {
     if (this.state !== 'playing') return;
     this.state = 'respawning';
     if (splash) this.splash.explode(14, this.player.x, this.player.body.bottom);
+    if (banner) this.hud.showBanner(banner, 'Back to the start of this hurdle');
+    this.player.leaveHiding();
 
-    this.lives.loseLife(LIVES.lossOnHurdleFail);
+    this.lives.loseLife(amount);
     this.hud.setLives(this.lives.lives);
     this.player.freeze();
     this.player.setVisible(false);
@@ -124,11 +148,13 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.hud.popup(this.player.x, this.player.y - 40, '−1 life', '#ffb3b3');
+    this.hud.popup(this.player.x, this.player.y - 40, message, '#ffb3b3');
     this.time.delayedCall(RESPAWN.delayMs, () => {
       const x = this.hurdles.checkpointX(this.season.layout.spawn.x) + RESPAWN.offsetX;
       const y = this.season.layout.groundY - RESPAWN.dropHeight;
       this.player.respawn(x, y, this.time.now, RESPAWN.inputLockMs);
+      this.police.forEach((officer) => officer.reset());
+      this.hud.setHidden(false);
       this.state = 'playing';
     });
   }
