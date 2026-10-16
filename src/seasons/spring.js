@@ -10,7 +10,7 @@ export default {
   layout,
   physics: { gravity: 1250, runSpeed: 220, jumpVelocity: 530, friction: 1.0 },
   visibility: 1.0,
-  police: { patrolSpeed: 50, visionLength: 170, visionAngleDeg: 40, detectionTime: 2.0, pauseMs: 1500 },
+  police: { patrolSpeed: 58, visionLength: 170, visionAngleDeg: 40, detectionTime: 2.0, pauseMs: 1500 },
   hidingSpots: ['bush', 'flowers'],
   hurdles: [
     { key: 'meadow', name: 'Meadow Walk' },

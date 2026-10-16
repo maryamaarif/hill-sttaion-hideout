@@ -14,6 +14,12 @@ This file is the source of truth for the game design and code conventions. Every
 - **Judges play Level 1 only.** Level 1 must be short (about 4–6 minutes), easy, and understandable within the first minute. Prioritise polish and reliability of Level 1 over later-level content.
 - "Runs with no help" is worth 15 points: never ship a state where the game crashes, soft-locks, or needs console tricks. Every screen must show which key to press next.
 
+## Judging and deployment
+- **Live build**: GitHub Pages from `main` (root) at <https://maryamaarif.github.io/hill-sttaion-hideout/>. `.nojekyll` keeps Pages from processing files. Every path is relative and every import matches its file name's case exactly (Pages is case-sensitive, macOS is not).
+- **`?demo=1`** (hidden): tops coins up to `DEMO.coins` at boot so judges can try the shop ("Your room" on the title screen).
+- **Credits**: `CREDITS.md` and the in-game Credits screen (`src/config/credits.js`) list all third-party software (Phaser 3.80.1, MIT, via jsDelivr; system fonts; system emoji). Keep both in step when adding anything third-party. All art and audio are made in code by the team.
+- Level 1 target: about 4–6 minutes for a first-time player, no dead ends: every failure respawns at the hurdle start, and moving platforms and trains reset with it.
+
 ## Tech rules
 
 - Plain HTML + JavaScript (ES modules via `<script type="module">`). **No build step, no npm.**

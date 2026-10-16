@@ -100,6 +100,11 @@ export const TRANSITION = {
   fadeMs: 400,
 };
 
+// Demo mode (?demo=1 in the URL): start with coins so judges can try the shop.
+export const DEMO = {
+  coins: 600,
+};
+
 // Easy mode (Settings): slower detection everywhere and an extra life per level.
 export const EASY = {
   detectionMultiplier: 1.5,

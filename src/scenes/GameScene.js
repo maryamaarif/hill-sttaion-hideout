@@ -421,9 +421,17 @@ export default class GameScene extends Phaser.Scene {
     this.hud.showPanel(`${this.season.name} complete!`, [
       `Lives: ${this.lives.lives}`,
       '',
-      'Press ENTER to continue',
+      'Press ENTER (or click) to continue',
     ]);
-    onKey(this, 'ENTER', () => this.finishSeason());
+    // ENTER or a click: whichever comes first.
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      this.finishSeason();
+    };
+    onKey(this, 'ENTER', go);
+    this.time.delayedCall(400, () => this.input.once('pointerdown', go));
   }
 
   finishSeason() {

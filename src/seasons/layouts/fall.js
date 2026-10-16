@@ -47,7 +47,7 @@ export default {
 
   movers: [
     // Waits at the station until the player climbs on, then runs to the far station.
-    { kind: 'train', mode: 'ferry', from: 300, to: 2640, y: groundY, speed: 120, carriages: 4 },
+    { kind: 'train', mode: 'ferry', from: 300, to: 2640, y: groundY, speed: 150, carriages: 4 },
   ],
 
   // Duck (↓) on the roof to pass under these. Roof = groundY - 90.
@@ -81,8 +81,10 @@ export default {
 
   police: [
     // Maple Halt: two officers scanning the train roofs as it passes.
-    { from: 1560, to: 1560, fixed: true, facing: -1, tiltDeg: -28, lengthScale: 1.5 },
-    { from: 1700, to: 1700, fixed: true, facing: 1, tiltDeg: -28, lengthScale: 1.5 },
+    // Long cones: at train speed a player on the roof stays in view long enough to be
+    // caught, so hiding between carriages matters.
+    { from: 1560, to: 1560, fixed: true, facing: -1, tiltDeg: -28, lengthScale: 1.8 },
+    { from: 1700, to: 1700, fixed: true, facing: 1, tiltDeg: -28, lengthScale: 1.8 },
     // Signal box over the track yard, watching the first island.
     { from: 4090, to: 4090, y: groundY - 90, fixed: true, facing: -1, tiltDeg: 30, lengthScale: 1.4 },
     // Leaf path patrol.

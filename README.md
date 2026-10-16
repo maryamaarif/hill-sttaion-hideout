@@ -1,21 +1,25 @@
 # Hill Station Hideout
 
-A side-scrolling stealth platformer for the **"Four Seasons"** game jam. You are a guest at a hill-station guest house, and plain-clothes police are looking for you. Get through spring, summer, fall and winter without being spotted.
+**▶ Play it here: <https://maryamaarif.github.io/hill-sttaion-hideout/>**
 
-Built with plain HTML/JavaScript and [Phaser 3.80.1](https://phaser.io) from a CDN. There is no build step and nothing to install.
+A side-scrolling stealth platformer made in 24 hours for the **"Four Seasons"** game jam.
 
-## Run locally
+You are a guest at a guest house in a hill station, and plain-clothes police (look for the sunglasses) are searching for you. Keep moving through the activities around the guest house through spring, summer, fall and winter, and stay out of sight. Each season is a stage with three hurdles. Clear a hurdle to earn half a life, get caught or fall and you lose one. Lives carry from season to season, and at the end of the level they turn into coins for your room at the guest house.
 
-Browsers block ES modules on `file://`, so serve the folder over HTTP:
+Level 1 takes about 4–6 minutes and is deliberately gentle.
 
-```bash
-cd hill-sttaion-hideout
-python3 -m http.server 8000
-```
+## How the four seasons change the gameplay
 
-Then open <http://localhost:8000>.
+The seasons change the **rules**, not just the colours. The controls stay the same throughout.
 
-(Any static server works, e.g. `npx serve`.)
+| Season | What changes | Hurdles |
+|---|---|---|
+| **Spring** | Normal footing, slow patrols. Teaches the game without words: walk, jump, hide in a bush as a police officer's vision cone sweeps past. | Meadow walk · stepping stones over a stream · a flower garden with two patrols |
+| **Summer** | **Heat:** standing still in the sun drains stamina, so you keep moving between shady rock overhangs. **Water:** ride a drifting canoe, then swim; diving hides you but uses breath. | Quarry gaps in the heat · canoe run past a bridge lookout (hide in the reeds) · lake swim under the jetty officer's gaze |
+| **Fall** | **The vintage train:** a moving platform you ride on the roof, ducking under bridges and hiding between carriages. **Timetables:** level-crossing trains are deadly but block police vision. **Wind:** gusts reveal what is hidden under the leaf piles. | Ride the train · cross the tracks · leaf path (some piles hide holes, some hide you) |
+| **Winter** | **Slippery** ground everywhere. **Skis:** you auto-run downhill (→ faster, ← slower). **Blizzard:** fog shrinks your view to a circle, police cones shrink too, and your **footprints** give you away. Police follow them. | Ski slope with police skiers · ski jump (full speed, hold jump to glide) · blizzard to the guest house |
+
+Between seasons you choose a **perk** for the next one (e.g. *Warm coat: less slip in Winter*). In your **room** you spend coins on room upgrades (the room visibly changes), items for the next level (disguise hat, running shoes, thermos, map) and extra hiding places in the seasons. Each new level is noticeably harder.
 
 ## Controls
 
@@ -23,33 +27,31 @@ Then open <http://localhost:8000>.
 |---|---|
 | ← → / A D | Move (on skis: faster / slower) |
 | Space / ↑ / W | Jump (hold after a ski jump to glide) |
-| ↓ / S | Hide in a bush, flower bed, overhang, reeds… (move or jump to leave); hold to dive when swimming |
+| ↓ / S | Hide in a hiding spot (move or jump to leave), duck, dive when swimming |
 | Esc / P | Pause: Resume, Restart season, Settings, Quit to menu |
 | M | Mute or unmute, anywhere |
-| Enter | Confirm on menus |
+| Enter / click | Confirm on menus |
 
-All movement keys can be remapped in **Settings → Controls**.
+Movement keys can be remapped in **Settings → Controls**.
 
-### Accessibility
+**Accessibility:** a colour-blind mode (patterns and outlines on police vision cones and hazards), Easy mode (slower detection and an extra life), screen shake on/off, and music and sound-effect volume.
 
-Settings has a **colour-blind mode** (patterns and outlines on police vision cones and hazards), an **Easy mode** (slower detection and an extra life), **screen shake** on/off, music and sound-effect volume, and remappable controls.
+**For judges:** add `?demo=1` to the URL (<https://maryamaarif.github.io/hill-sttaion-hideout/?demo=1>) to start with 600 coins, then choose **Your room** on the title screen to try the shop.
 
-### What's playable
+## Run locally
 
-- **Spring** is a full stage: three hurdles (Meadow Walk, Stepping Stones, Flower Garden), ending at the Garden Gate. Plain-clothes officers (look for the sunglasses) patrol the garden: stay out of their vision cones or hide.
-- **Summer** is a full stage: a hot quarry (keep moving, rest in the shade), a canoe run past a bridge lookout, and a lake swim where you dive under the jetty officer's gaze.
-- **Fall** is a full stage: ride a vintage steam train (duck under bridges, hide between carriages), time three level crossings, and cross a leaf path where the wind reveals hidden holes.
-- **Winter** is a full stage: ski down the mountain past police skiers, fly the ski jump, then cross a blizzard where your footprints give you away, to reach the guest house.
-- Between seasons you see how many lives you carry forward and pick one perk for the next season (e.g. *Warm coat: less slip in Winter*).
-- Finishing Winter completes the level: lives turn into coins, then you return to your room. Spend coins on room upgrades (the room changes), items for the next level, and extra hiding places in the seasons. Press **N** in your room to start the next level, which is noticeably harder.
-- Progress is saved in your browser (localStorage). If storage is blocked, the game still works for the session.
-- All art is drawn in code and all music and sound is synthesised live with Web Audio: there are no asset files to download.
-- Every screen shows which key continues.
+There is nothing to install and no build step. Browsers block ES modules on `file://`, so serve the folder over HTTP:
 
-## Deploy to GitHub Pages
+```bash
+git clone https://github.com/maryamaarif/hill-sttaion-hideout.git
+cd hill-sttaion-hideout
+python3 -m http.server 8000
+```
 
-Push to GitHub, then go to **Settings → Pages → Deploy from branch → `main` / root**. All paths are relative, so the game works from the Pages sub-path.
+Then open <http://localhost:8000> (or <http://localhost:8000/?demo=1>). Any static web server works.
 
-## Project layout
+Phaser 3.80.1 is loaded from a CDN, so the first load needs an internet connection. Progress and settings are saved in your browser (localStorage). If storage is blocked, the game still works for the session.
 
-See [CLAUDE.md](CLAUDE.md) for the full design and code structure.
+## Made with
+
+Plain HTML and JavaScript with [Phaser 3.80.1](https://phaser.io). Every sprite is drawn in code, and all music and sound is synthesised live with Web Audio, so there are no asset files. See [CREDITS.md](CREDITS.md) for third-party software and licences, and [CLAUDE.md](CLAUDE.md) for the full design and code structure.

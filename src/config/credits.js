@@ -1,11 +1,13 @@
-// Credits screen text (MenuScene → Credits). Edit the team lines before submitting.
+// Credits screen text (MenuScene → Credits). Keep in step with CREDITS.md.
+// Edit the team line before submitting.
 export const CREDITS = [
   { heading: 'Hill Station Hideout' },
   { line: 'Made in 24 hours for the "Four Seasons" game jam' },
   { heading: 'Team' },
   { line: 'Design, code, art and music: the Hill Station Hideout team' },
-  { heading: 'Made with' },
-  { line: 'Phaser 3.80.1' },
-  { line: 'Every sprite drawn in code, every sound synthesised with Web Audio' },
-  { line: 'No downloaded assets' },
+  { line: 'All art and audio were made by the team during the event' },
+  { heading: 'Third-party' },
+  { line: 'Phaser 3.80.1 game framework (MIT licence), via jsDelivr' },
+  { line: 'Fonts: your system\'s Trebuchet MS / Verdana (none bundled)' },
+  { line: 'Emoji icons are drawn by your system\'s emoji font' },
 ];
