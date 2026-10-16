@@ -34,7 +34,8 @@ export default class DifficultySystem {
   }
 
   // Season config with hurdle timing tightened for the level: less breath and
-  // stamina, faster moving platforms (hurdleTimingMultiplier < 1 = harder).
+  // stamina, faster moving platforms, shorter crossing warnings
+  // (hurdleTimingMultiplier < 1 = harder).
   static tuneSeason(season, level) {
     const m = DifficultySystem.forLevel(level).hurdleTimingMultiplier;
     return {
@@ -42,6 +43,7 @@ export default class DifficultySystem {
       swim: season.swim && { ...season.swim, breathSeconds: season.swim.breathSeconds * m },
       heat: season.heat && { ...season.heat, staminaSeconds: season.heat.staminaSeconds * m },
       moverSpeedScale: 1 / m,
+      hurdleTiming: m,
     };
   }
 }

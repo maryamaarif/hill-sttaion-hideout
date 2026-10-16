@@ -32,7 +32,8 @@ Then open <http://localhost:8000>.
 - **Summer** is a full stage: a hot quarry (keep moving, rest in the shade), a canoe run past a bridge lookout, and a lake swim where you dive under the jetty officer's gaze.
 - **Fall** is a full stage: ride a vintage steam train (duck under bridges, hide between carriages), time three level crossings, and cross a leaf path where the wind reveals hidden holes.
 - **Winter** is a full stage: ski down the mountain past police skiers, fly the ski jump, then cross a blizzard where your footprints give you away, to reach the guest house.
-- Finishing Winter completes the level: lives turn into coins, then you return to your room.
+- Between seasons you see how many lives you carry forward and pick one perk for the next season (e.g. *Warm coat: less slip in Winter*).
+- Finishing Winter completes the level: lives turn into coins, then you return to your room. Level 2 and beyond are noticeably harder.
 - Every screen shows which key continues.
 
 ## Deploy to GitHub Pages

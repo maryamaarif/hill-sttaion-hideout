@@ -7,6 +7,7 @@ import HurdleSystem from '../systems/HurdleSystem.js';
 import LivesSystem from '../systems/LivesSystem.js';
 import DifficultySystem from '../systems/DifficultySystem.js';
 import AudioSystem from '../systems/AudioSystem.js';
+import PerkSystem from '../systems/PerkSystem.js';
 import SaveSystem from '../systems/SaveSystem.js';
 import Player from '../entities/Player.js';
 import Police from '../entities/Police.js';
@@ -29,8 +30,10 @@ export default class GameScene extends Phaser.Scene {
 
   create(data) {
     this.run = data;
-    // Season config with hurdle timing tuned for the level (breath, stamina, movers).
-    this.season = DifficultySystem.tuneSeason(SEASON_ORDER[data.seasonIndex], data.level);
+    // Season config tuned for the level (breath, stamina, movers, crossings), then
+    // the perk chosen on the transition screen.
+    const tuned = DifficultySystem.tuneSeason(SEASON_ORDER[data.seasonIndex], data.level);
+    this.season = PerkSystem.apply(tuned, data.perks);
     this.player = null;
     if (!this.season.layout) {
       this.createPlaceholder();
@@ -82,7 +85,7 @@ export default class GameScene extends Phaser.Scene {
     );
 
     this.heat = new HeatSystem(this, layout.heatZones, this.season.heat, layout.groundY);
-    this.crossings = new CrossingSystem(this, layout.crossings, layout.groundY, this.season.palette, this.audio);
+    this.crossings = new CrossingSystem(this, layout.crossings, layout.groundY, this.season.palette, this.audio, this.season.hurdleTiming);
     this.leaves = new LeafSystem(this, layout.leafPiles, this.season.wind, layout.groundY, this.season.palette, this.audio);
     this.hidingSpots.push(...this.leaves.hidingSpots);
     this.slopes = new SlopeSystem(layout.slopes);
@@ -93,6 +96,8 @@ export default class GameScene extends Phaser.Scene {
 
     this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
     this.hud.setLives(this.lives.lives);
+    const perk = PerkSystem.activeFor(this.season.key, data.perks)[0];
+    if (perk) this.hud.setPerk(`${perk.icon} ${perk.name}`);
     this.hud.setBetweenHurdles(this.season.tagline);
 
     this.hurdles = new HurdleSystem(this, this.level.hurdles, this.player, {

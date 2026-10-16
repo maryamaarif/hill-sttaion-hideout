@@ -10,8 +10,10 @@ const TRAIN_SPEED = 900; // px/s the wagons stream past
 //
 // def: { x, w, periodMs, offsetMs, warnMs, passMs }
 export default class CrossingSystem {
-  constructor(scene, defs = [], groundY, palette, audio) {
+  // timing < 1 (harder levels) shortens the warning before each train.
+  constructor(scene, defs = [], groundY, palette, audio, timing = 1) {
     this.scene = scene;
+    this.timing = timing;
     this.audio = audio;
     this.groundY = groundY;
     this.crossings = defs.map((def) => this.build(def, palette));
@@ -78,7 +80,7 @@ export default class CrossingSystem {
   stateAt(def, time) {
     const t = (time + (def.offsetMs ?? 0)) % def.periodMs;
     if (t >= def.periodMs - def.passMs) return 'passing';
-    if (t >= def.periodMs - def.passMs - def.warnMs) return 'warn';
+    if (t >= def.periodMs - def.passMs - def.warnMs * this.timing) return 'warn';
     return 'idle';
   }
 

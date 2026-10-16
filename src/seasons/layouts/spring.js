@@ -48,7 +48,10 @@ export default {
   ],
 
   // Added from level 2 on (one per DifficultySystem policeCountBonus).
-  extraPolice: [{ from: 3150, to: 3470, startAt: 'from' }],
+  extraPolice: [
+    { from: 3150, to: 3470, startAt: 'from' },
+    { from: 900, to: 1250, startAt: 'to' }, // meadow (level 3+)
+  ],
 
   trees: [140, 390, 1010, 1390, 2360, 2520, 3960, 4320],
 

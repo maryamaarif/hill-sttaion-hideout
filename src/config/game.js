@@ -90,6 +90,16 @@ export const POLICE = {
   searchMs: 1800, // look around where the trail ends before going back
 };
 
+// Season transition screen timings (ms from the start of the scene).
+export const TRANSITION = {
+  swapMs: 900, // old season's icon and particles give way to the new
+  blendMs: 900, // sky and ground colours blend over this long
+  titleMs: 1300, // next season's name appears
+  livesMs: 1800, // lives carried forward appear
+  choiceMs: 2600, // perk cards appear (ENTER skips straight here)
+  fadeMs: 400,
+};
+
 export const CAMERA = {
   lerp: 0.09,
   lookAheadX: 90,

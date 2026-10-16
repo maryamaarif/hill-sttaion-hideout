@@ -64,7 +64,10 @@ export default {
   ],
 
   // Added from level 2 on (one per DifficultySystem policeCountBonus).
-  extraPolice: [{ from: 5200, to: 5450, startAt: 'to' }],
+  extraPolice: [
+    { from: 5200, to: 5450, startAt: 'to' },
+    { from: 3600, to: 3900 }, // start of the blizzard (level 3+)
+  ],
 
   trees: [140, 360, 1100, 1700, 2300, 3460, 3620, 4300, 5420, 5900],
 

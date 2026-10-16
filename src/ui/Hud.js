@@ -61,6 +61,7 @@ export default class Hud {
     this.drawDots();
 
     this.coinText = fixed(scene.add.text(W - 16, 26, '', textStyle(22)).setOrigin(1, 0.5));
+    this.perkText = fixed(scene.add.text(W - 16, 46, '', textStyle(14, { color: '#fff1c9' })).setOrigin(1, 0));
     this.coinIcon = fixed(scene.add.image(0, 26, 'coin'));
     this.setCoins(coins);
 
@@ -170,6 +171,11 @@ export default class Hud {
   setCoins(coins) {
     this.coinText.setText(String(coins));
     this.coinIcon.setX(this.coinText.x - this.coinText.width - 16);
+  }
+
+  // Perk chosen for this season, shown under the coins.
+  setPerk(label) {
+    this.perkText.setText(label);
   }
 
   // ----- misc -----

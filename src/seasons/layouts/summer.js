@@ -81,7 +81,10 @@ export default {
   ],
 
   // Added from level 2 on (one per DifficultySystem policeCountBonus).
-  extraPolice: [{ from: 3740, to: 4080, startAt: 'to' }],
+  extraPolice: [
+    { from: 3740, to: 4080, startAt: 'to' },
+    { from: 700, to: 880, y: 400 }, // quarry ledge (level 3+)
+  ],
 
   trees: [90, 1830, 3780, 4100, 5120, 5480],
 

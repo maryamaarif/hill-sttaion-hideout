@@ -111,8 +111,17 @@ Player meters (stamina and breath) float above the player's head only while they
 ### Guest house hub
 Between levels the player returns to their room at the guest house and spends coins on room upgrades, items, and unlocking extra hiding places in the levels.
 
+### Season transitions and perks
+- After a season's goal, `SeasonTransitionScene` plays a 2–3 s animated change: the old season's particles and icon give way to the next season's, the sky and ground blend, then "❤ x 3.5 carried into Summer" with the hearts. ENTER skips the animation. Timings: `TRANSITION` in `src/config/game.js`.
+- The player then **picks one perk** for the next season (3 cards; ←/→ + ENTER or click). Perks are data in `src/config/perks.js`: each effect multiplies or adds to a number in the season config by dotted path (e.g. `physics.friction`). `PerkSystem.apply` applies the perks chosen for that season; `run.perks` keeps the choices for the whole level. The HUD shows the active perk under the coins.
+- After Winter, `LevelCompleteScene` tallies lives into coins (100 per life, 50 per half), adds the speed bonus, counts the total up, then goes to the Hub.
+
 ### Difficulty
-Each new level increases police count, patrol speed, vision cone length and detection speed, and tightens hurdle timing. **Level 1 is deliberately easy for the judges.**
+Each new level increases police count, patrol speed, vision cone length and detection speed, and tightens hurdle timing. **Level 1 is deliberately easy for the judges.** All numbers live in `src/config/levels.js`:
+- `policeCountBonus` adds officers from each layout's `extraPolice` list (every season has two).
+- `patrolSpeedMultiplier`, `visionLengthMultiplier`, `detectionSpeedMultiplier` scale the season's police settings (`DifficultySystem.policeSettings`).
+- `hurdleTimingMultiplier` (< 1 = harder) scales breath, stamina, moving-platform speed and level-crossing warning time (`DifficultySystem.tuneSeason`).
+- Level 2 is noticeably harder (+1 officer, ~30% faster, ~25% longer cones, ~45% faster detection, 15% tighter timing).
 
 ### Controls (planned)
 - Left / Right (or A / D): move
@@ -138,6 +147,7 @@ src/systems/            LevelBuilder (layout → terrain/hazards/triggers), Hurd
                         CrossingSystem (timed level crossings, vision blockers),
                         LeafSystem (leaf piles, wind gusts), SlopeSystem (slopes, ramps),
                         BlizzardSystem (fog, snow), FootprintSystem (trails police follow),
+                        PerkSystem (applies chosen perks to a season config),
                         LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
@@ -147,6 +157,7 @@ src/systems/RunState.js newLevelRun(): the run data passed between scenes
 src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)
 src/config/levels.js    difficulty numbers per level
 src/config/audio.js     synthesised sound-effect recipes + volume
+src/config/perks.js     season perks offered on the transition screen
 assets/                 images, audio (add when needed)
 ```
 

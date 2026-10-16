@@ -90,7 +90,10 @@ export default {
   ],
 
   // Added from level 2 on (one per DifficultySystem policeCountBonus).
-  extraPolice: [{ from: 2700, to: 3400, startAt: 'to' }],
+  extraPolice: [
+    { from: 2700, to: 3400, startAt: 'to' },
+    { from: 5700, to: 6000, startAt: 'to' }, // end of the leaf path (level 3+)
+  ],
 
   trees: [80, 540, 1120, 2700, 3540, 4520, 6080, 6320],
 
