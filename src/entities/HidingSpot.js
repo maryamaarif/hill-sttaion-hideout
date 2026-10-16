@@ -1,39 +1,49 @@
 import { DEPTH, UI } from '../config/game.js';
 
 // A place the player can hide by pressing Down: bush, flower bed, rock overhang,
-// reeds, carriage, snow hut, etc. Drawn in front of the player so a hidden player
-// sits "inside" it.
+// reeds, luggage, the gap between train carriages, a leaf pile, etc. Drawn in
+// front of the player so a hidden player sits "inside" it.
 //
-// def: { x, kind, y?, w? }
-//   x   centre; y = base (defaults to the layout's ground); w = width for wide
-//       spots such as reeds (the texture is tiled across it)
+// def: { x, kind, y?, w?, h?, invisible?, tuck? }
+//   x          centre; y = base (defaults to the ground at x)
+//   w          width for wide spots such as reeds (the texture is tiled across it)
+//   invisible  no image of its own (something else draws the cover: a train, leaves);
+//              then w and h give the size
+//   tuck       pull the hiding player to the centre (default: narrow, static spots)
+//
+// Other systems may move a spot (setPosition) or mark it `exposed` (wind gusts):
+// police can see a player hiding in an exposed spot.
 export default class HidingSpot {
   constructor(scene, def, groundY, seasonKey) {
     const { x, kind } = def;
     const baseY = def.y ?? groundY;
     const key = `hide-${kind}-${seasonKey}`;
-    const tex = scene.textures.get(key).getSourceImage();
+    const invisible = def.invisible || !scene.textures.exists(key);
+    const tex = invisible ? { width: def.w ?? 40, height: def.h ?? 50 } : scene.textures.get(key).getSourceImage();
 
     this.kind = kind;
     this.x = x;
-    this.wide = def.w != null;
+    this.wide = def.w != null && !invisible;
+    this.tuck = def.tuck ?? !this.wide;
+    this.exposed = false;
     this.images = [];
-    if (this.wide) {
+    if (!invisible && this.wide) {
       const count = Math.max(1, Math.round(def.w / (tex.width * 0.8)));
       const step = def.w / count;
       for (let i = 0; i < count; i++) {
         const ix = x - def.w / 2 + step * (i + 0.5);
         this.images.push(scene.add.image(ix, baseY + 2, key).setOrigin(0.5, 1).setDepth(DEPTH.foreground));
       }
-    } else {
+    } else if (!invisible) {
       this.images.push(scene.add.image(x, baseY + 2, key).setOrigin(0.5, 1).setDepth(DEPTH.foreground));
     }
 
-    const w = def.w ?? tex.width * 0.7;
-    this.bounds = new Phaser.Geom.Rectangle(x - w / 2, baseY - tex.height, w, tex.height + 4);
+    this.width = def.w ?? tex.width * 0.7;
+    this.height = tex.height;
+    this.bounds = new Phaser.Geom.Rectangle(0, 0, this.width, this.height + 4);
 
     this.prompt = scene.add
-      .text(x, baseY - tex.height - 16, '↓ hide', {
+      .text(x, 0, '↓ hide', {
         fontFamily: UI.font,
         fontSize: '16px',
         color: UI.textColor,
@@ -43,7 +53,16 @@ export default class HidingSpot {
       .setOrigin(0.5)
       .setDepth(DEPTH.popup)
       .setVisible(false);
-    scene.tweens.add({ targets: this.prompt, y: this.prompt.y - 5, duration: 500, yoyo: true, repeat: -1 });
+    this.bob = 0;
+    scene.tweens.add({ targets: this, bob: -5, duration: 500, yoyo: true, repeat: -1 });
+    this.setPosition(x, baseY);
+  }
+
+  // Move the spot (used by spots that ride on a train).
+  setPosition(x, baseY) {
+    this.x = x;
+    this.baseY = baseY;
+    this.bounds.setPosition(x - this.width / 2, baseY - this.height);
   }
 
   contains(player) {
@@ -58,6 +77,8 @@ export default class HidingSpot {
   // For wide spots the prompt follows the player along the spot.
   setPrompt(visible, player) {
     this.prompt.setVisible(visible);
-    if (visible && this.wide && player) this.prompt.setX(player.x);
+    if (!visible) return;
+    const px = this.wide && player ? player.x : this.x;
+    this.prompt.setPosition(px, this.baseY - this.height - 16 + this.bob);
   }
 }

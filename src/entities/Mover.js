@@ -25,6 +25,8 @@ export default class Mover {
     this.image.setDisplaySize(this.w, this.image.height);
 
     this.zone = scene.add.zone(0, 0, this.w, 12);
+    this.zones = [this.zone]; // collision zones (a Train has several)
+    this.hidingSpots = [];
     scene.physics.add.existing(this.zone);
     const body = this.zone.body;
     body.setAllowGravity(false);

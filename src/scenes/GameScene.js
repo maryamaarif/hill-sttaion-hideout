@@ -11,6 +11,8 @@ import SaveSystem from '../systems/SaveSystem.js';
 import Player from '../entities/Player.js';
 import Police from '../entities/Police.js';
 import HeatSystem from '../systems/HeatSystem.js';
+import CrossingSystem from '../systems/CrossingSystem.js';
+import LeafSystem from '../systems/LeafSystem.js';
 import Hud from '../ui/Hud.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
@@ -50,9 +52,9 @@ export default class GameScene extends Phaser.Scene {
     this.movers = this.level.movers;
     this.player = new Player(this, layout.spawn.x, layout.spawn.y, this.season);
     this.physics.add.collider(this.player, this.level.solids);
-    this.physics.add.collider(this.player, this.movers.map((m) => m.zone));
+    this.physics.add.collider(this.player, this.movers.flatMap((m) => m.zones));
     this.physics.add.overlap(this.player, this.level.obstacles, () =>
-      this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, sound: 'bonk', message: 'Bonk!', reason: 'branch' }),
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'bonk', message: 'Bonk!', reason: 'branch' }),
     );
     this.physics.add.overlap(this.player, this.level.hazards, () =>
       this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, sound: 'splash', message: '−1 life', reason: 'water' }),
@@ -73,6 +75,9 @@ export default class GameScene extends Phaser.Scene {
     );
 
     this.heat = new HeatSystem(this, layout.heatZones, this.season.heat, layout.groundY);
+    this.crossings = new CrossingSystem(this, layout.crossings, layout.groundY, this.season.palette, this.audio);
+    this.leaves = new LeafSystem(this, layout.leafPiles, this.season.wind, layout.groundY, this.season.palette, this.audio);
+    this.hidingSpots.push(...this.leaves.hidingSpots);
     this.meters = new PlayerMeters(this);
 
     this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
@@ -152,7 +157,12 @@ export default class GameScene extends Phaser.Scene {
       this.nextBubbleAt = time + PLAYER.swim.bubbleEveryMs;
     }
 
-    const catcher = this.police.find((officer) => officer.update(time, delta, player, playing));
+    // Wind can expose a player hiding in a leaf pile; passing trains block police vision.
+    this.leaves.update(time, player);
+    player.exposed = Boolean(player.hidingSpot?.exposed);
+    const trainHit = this.crossings.update(time, dt, player) === 'hit' && playing;
+    const blockers = this.crossings.blockers();
+    const catcher = this.police.find((officer) => officer.update(time, delta, player, playing, blockers));
     const heat = playing ? this.heat.update(dt, player, Boolean(spot)) : null;
     this.meters.update(player, [
       { kind: 'stamina', value: this.heat.stamina, show: this.heat.active && (this.heat.stamina < 1 || this.heat.standingInSun) },
@@ -169,7 +179,9 @@ export default class GameScene extends Phaser.Scene {
     if (heat === 'warn') {
       this.hud.popup(player.x, player.y - 56, 'Too hot! Find shade', '#ffd27a');
     }
-    if (heat === 'faint') {
+    if (trainHit) {
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'bonk', message: 'Too close!', banner: 'Watch the signals!', reason: 'train' });
+    } else if (heat === 'faint') {
       this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'faint', message: 'Fainted!', banner: 'Too hot!', reason: 'heat' });
     } else if (catcher) {
       this.loseLife({ amount: LIVES.lossOnCaught, sound: 'caught', message: 'Caught!', banner: 'Spotted!', reason: 'caught' });

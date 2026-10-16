@@ -2,6 +2,7 @@ import { DEPTH, UI } from '../config/game.js';
 import { createSeasonTextures, seededRandom } from '../art/TextureFactory.js';
 import HidingSpot from '../entities/HidingSpot.js';
 import Mover from '../entities/Mover.js';
+import Train from '../entities/Train.js';
 
 // Turns a season's layout data into terrain, hazards, hiding spots, moving
 // platforms and the goal. Shared by every season: a new season only needs a
@@ -9,10 +10,14 @@ import Mover from '../entities/Mover.js';
 //   ground       [{ x, w, y?, kind? }]   y defaults to groundY; kind 'rock' = quarry rock
 //   pits         [{ x, w }]              dark drop-offs drawn in ground gaps
 //   cliffs       [{ x, w, h }]           rock walls behind the play field
-//   platforms    [{ x, y, w, h, kind }]  wood, stone, fence, planter, rock, bridge, jetty
+//   platforms    [{ x, y, w, h, kind, solid? }]  wood, stone, fence, planter, rock, bridge,
+//                                        jetty, halt (solid: false = scenery only)
 //   water        [{ x, w, swim? }]       swim: true = swimmable, otherwise falling in fails
 //   obstacles    [{ x, top, kind }]      touching one fails the hurdle (e.g. 'snag')
+//                [{ x, y, w, h, kind }]  overhead: 'footbridge', 'tunnel' (duck under them)
 //   movers       [{ kind, mode, from, to, y, w, speed, phase? }]  see entities/Mover.js
+//                kind 'train': see entities/Train.js
+//   structures   [{ kind, x, w? }]      scenery: 'trestle', 'rails', 'signalBox'
 //   hidingSpots  [{ x, kind, y?, w? }]   see entities/HidingSpot.js
 //   trees, flowerBeds, signs, heatZones, police, extraPolice, goal
 
@@ -101,6 +106,22 @@ function drawPlatform(g, p, H, { x, y, w, h, kind }) {
       for (let px = x + 4; px < x + w; px += 20) g.fillRect(px, y - 16, 4, 16);
       g.fillRect(x, y - 18, w, 4);
       break;
+    case 'crate':
+      g.fillStyle(p.woodDark).fillRect(x, y, w, h);
+      g.fillStyle(p.wood).fillRect(x + 3, y + 3, w - 6, h - 6);
+      g.lineStyle(3, p.woodDark).lineBetween(x + 3, y + 3, x + w - 3, y + h - 3);
+      g.lineBetween(x + w - 3, y + 3, x + 3, y + h - 3);
+      break;
+    case 'halt': { // small station platform over the gorge, with a shelter
+      g.fillStyle(p.woodDark);
+      for (let px = x + 12; px < x + w; px += 70) g.fillRect(px, y + h, 8, H - y - h);
+      g.fillStyle(p.stone).fillRect(x, y, w, h);
+      g.fillStyle(p.stoneLight).fillRect(x, y, w, 3);
+      g.fillStyle(p.woodDark).fillRect(x + 20, y - 96, 6, 96);
+      g.fillRect(x + w - 26, y - 96, 6, 96);
+      g.fillStyle(p.roof).fillRect(x + 6, y - 106, w - 12, 14);
+      break;
+    }
     case 'jetty': // wooden pier on posts reaching into the water
       g.fillStyle(p.woodDark);
       for (let px = x + 10; px < x + w; px += 60) g.fillRect(px, y + h, 8, H - y - h);
@@ -152,6 +173,69 @@ function drawWater(scene, p, { x, w, swim }, top, H) {
   // Rivers flow right; still water just ripples.
   if (swim) scene.tweens.add({ targets: shine, x: 12, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   else scene.tweens.add({ targets: shine, x: 40, duration: 1100, repeat: -1 });
+}
+
+// Overhead obstacles the player must duck under while riding a train.
+function drawOverhead(scene, p, { x, y, w, h, kind }, groundY) {
+  if (kind === 'tunnel') {
+    const ceiling = y + h;
+    const hill = scene.add.graphics().setDepth(DEPTH.foreground);
+    hill.fillStyle(p.rockDark).fillPoints([
+      { x: x - 70, y: groundY }, { x: x - 40, y: ceiling - 40 }, { x: x + 20, y: ceiling - 120 },
+      { x: x + w / 2, y: ceiling - 150 }, { x: x + w - 20, y: ceiling - 115 }, { x: x + w + 40, y: ceiling - 40 },
+      { x: x + w + 70, y: groundY }, { x: x + w, y: groundY }, { x: x + w, y: ceiling }, { x, y: ceiling }, { x, y: groundY },
+    ], true);
+    hill.fillStyle(p.rock).fillRect(x, ceiling - 22, w, 22);
+    const rnd = seededRandom(x);
+    for (let tx = x - 10; tx < x + w + 10; tx += 34) {
+      hill.fillStyle(p.leaves[Math.floor(rnd() * p.leaves.length)]).fillCircle(tx, ceiling - 120 + rnd() * 50 + Math.abs(tx - x - w / 2) * 0.4, 18);
+    }
+    hill.lineStyle(10, p.stone);
+    hill.lineBetween(x, groundY, x, ceiling);
+    hill.lineBetween(x + w, groundY, x + w, ceiling);
+    // Shade inside the tunnel: the train and player stay visible, just darker.
+    scene.add.rectangle(x, ceiling, w, groundY - ceiling, 0x1a1210, 0.45).setOrigin(0).setDepth(DEPTH.foreground);
+    return;
+  }
+  // Footbridge over the line: pillars behind the train, deck in front.
+  const back = scene.add.graphics().setDepth(DEPTH.decorBack);
+  back.fillStyle(p.stone).fillRect(x + 6, y + h, 12, scene.scale.height - y - h);
+  back.fillRect(x + w - 18, y + h, 12, scene.scale.height - y - h);
+  const deck = scene.add.graphics().setDepth(DEPTH.foreground);
+  deck.fillStyle(p.stone).fillRect(x, y, w, h);
+  deck.fillStyle(p.stoneLight).fillRect(x, y, w, 3);
+  deck.fillStyle(p.woodDark);
+  for (let px = x + 2; px < x + w; px += 14) deck.fillRect(px, y - 14, 3, 14);
+  deck.fillRect(x, y - 16, w, 3);
+}
+
+function drawStructure(g, back, p, { kind, x, w }, groundY, H) {
+  if (kind === 'rails') {
+    g.fillStyle(p.woodDark);
+    for (let sx = x; sx < x + w; sx += 16) g.fillRect(sx, groundY - 3, 8, 5);
+    g.fillStyle(0x6d6d73).fillRect(x, groundY - 5, w, 3);
+  } else if (kind === 'trestle') {
+    back.lineStyle(5, p.woodDark);
+    for (let tx = x; tx < x + w; tx += 60) {
+      back.lineBetween(tx, groundY + 4, tx + 60, H);
+      back.lineBetween(tx + 60, groundY + 4, tx, H);
+      back.lineBetween(tx, groundY + 4, tx, H);
+    }
+    back.fillStyle(p.woodDark).fillRect(x, groundY, w, 8);
+    drawStructure(g, back, p, { kind: 'rails', x, w }, groundY, H);
+  } else if (kind === 'signalBox') {
+    // Lookout tower on stilts: an officer stands on the deck; the path runs beneath.
+    const deckY = groundY - 90;
+    back.fillStyle(p.woodDark);
+    back.fillRect(x - 32, deckY, 6, 90);
+    back.fillRect(x + 26, deckY, 6, 90);
+    back.lineStyle(3, p.woodDark).lineBetween(x - 30, deckY + 10, x + 28, groundY - 10);
+    back.lineBetween(x + 28, deckY + 10, x - 30, groundY - 10);
+    back.fillStyle(p.wood).fillRect(x - 40, deckY, 80, 8);
+    back.fillStyle(p.roof).fillRect(x - 44, deckY - 70, 88, 10);
+    back.fillStyle(p.woodDark).fillRect(x - 40, deckY - 60, 4, 60);
+    back.fillRect(x + 36, deckY - 60, 4, 60);
+  }
 }
 
 function drawSnag(g, p, x, top, surfaceY) {
@@ -223,8 +307,9 @@ export default function buildLevel(scene, season) {
   }
   for (const plat of layout.platforms ?? []) {
     drawPlatform(terrain, p, H, plat);
-    addSolid(scene, solids, plat.x, plat.y, plat.w, plat.h);
+    if (plat.solid !== false) addSolid(scene, solids, plat.x, plat.y, plat.w, plat.h);
   }
+  for (const st of layout.structures ?? []) drawStructure(terrain, back, p, st, gy, H);
 
   const decor = scene.add.graphics().setDepth(DEPTH.decor);
   for (const { x, w } of layout.flowerBeds ?? []) drawFlowers(decor, p, x, groundTopAt(layout, x), w, x);
@@ -238,13 +323,23 @@ export default function buildLevel(scene, season) {
   }
 
   const front = scene.add.graphics().setDepth(DEPTH.water + 2);
-  for (const { x, top, kind } of layout.obstacles ?? []) {
-    if (kind === 'snag') drawSnag(front, p, x, top, surfaceY);
+  for (const ob of layout.obstacles ?? []) {
+    if (ob.w) {
+      // Overhead: forgiving hitbox slightly smaller than the drawing.
+      drawOverhead(scene, p, ob, gy);
+      obstacles.push(addTrigger(scene, ob.x + 4, ob.y, ob.w - 8, ob.h - 2));
+      continue;
+    }
+    if (ob.kind === 'snag') drawSnag(front, p, ob.x, ob.top, surfaceY);
     // Forgiving hitbox: narrower and lower than the drawing.
-    obstacles.push(addTrigger(scene, x + 4, top + 6, 8, surfaceY - top - 6));
+    obstacles.push(addTrigger(scene, ob.x + 4, ob.top + 6, 8, surfaceY - ob.top - 6));
   }
 
-  const movers = (layout.movers ?? []).map((def) => new Mover(scene, def, season.moverSpeedScale ?? 1));
+  const speedScale = season.moverSpeedScale ?? 1;
+  const movers = (layout.movers ?? []).map((def) =>
+    def.kind === 'train' ? new Train(scene, def, speedScale, season.key) : new Mover(scene, def, speedScale),
+  );
+  for (const m of movers) hidingSpots.push(...m.hidingSpots);
 
   for (const def of layout.hidingSpots ?? []) {
     hidingSpots.push(new HidingSpot(scene, def, groundTopAt(layout, def.x), season.key));

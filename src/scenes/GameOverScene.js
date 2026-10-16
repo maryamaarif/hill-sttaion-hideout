@@ -8,7 +8,8 @@ const MESSAGES = {
   water: 'You ended up in the water once too often.',
   fell: 'You took one tumble too many.',
   heat: 'The summer sun got the better of you.',
-  branch: 'One branch too many knocked you into the river.',
+  branch: 'One branch too many knocked you off.',
+  train: 'The trains ran on time. You did not.',
 };
 
 export default class GameOverScene extends Phaser.Scene {

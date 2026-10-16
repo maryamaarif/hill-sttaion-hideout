@@ -49,6 +49,19 @@ export const SFX = {
   faint: [{ freq: 600, to: 150, type: 'triangle', start: 0, duration: 0.6, gain: 0.35 }],
   // Hit an obstacle.
   bonk: [{ freq: 160, to: 90, type: 'square', start: 0, duration: 0.12, gain: 0.3 }],
+  // Level-crossing bell (signal turns red).
+  bell: [
+    { freq: 1320, type: 'triangle', start: 0, duration: 0.18, gain: 0.3 },
+    { freq: 1320, type: 'triangle', start: 0.3, duration: 0.18, gain: 0.3 },
+    { freq: 1320, type: 'triangle', start: 0.6, duration: 0.18, gain: 0.3 },
+  ],
+  // A train rushing through a crossing.
+  rumble: [
+    { freq: 400, noise: true, start: 0, duration: 1.2, gain: 0.45 },
+    { freq: 70, to: 55, type: 'sawtooth', start: 0, duration: 1.2, gain: 0.15 },
+  ],
+  // Wind gust over the leaf path.
+  whoosh: [{ freq: 3000, to: 500, noise: true, start: 0, duration: 1.4, gain: 0.35 }],
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
 };

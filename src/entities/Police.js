@@ -11,13 +11,18 @@ function lerpColor(a, b, t) {
 // Plain-clothes officer. Walks between route.from and route.to, pauses, turns.
 // Sees the player inside a cone in front of them; a meter fills while seen.
 //
-// route: { from, to, startAt: 'from' | 'to', activateX?, waitFacing?, y?, tiltDeg?, pauseMs? }
+// route: { from, to, startAt: 'from' | 'to', activateX?, waitFacing?, y?, tiltDeg?, pauseMs?,
+//          fixed?, facing?, lengthScale? }
 //   startAt     which end the officer starts at; they first walk toward the other end
 //   activateX   if set, the officer stands still (facing waitFacing) until the
 //               player passes this x, then starts the patrol
 //   y           feet height for an officer on a bridge/jetty (default: layout ground)
 //   tiltDeg     aim the cone further down, e.g. from a bridge onto the river
 //   pauseMs     override the season pause; from === to makes a lookout who just turns
+//   fixed       stands at `from` facing `facing` (-1 left, 1 right) and never turns
+//   lengthScale longer (or shorter) cone for this officer, e.g. scanning a platform
+//
+// Vision is blocked by `blockers` (rectangles, e.g. a passing train) passed to update().
 export default class Police {
   constructor(scene, route, settings, groundY, visibility = 1) {
     this.scene = scene;
@@ -50,7 +55,7 @@ export default class Police {
   reset() {
     const { from, to, startAt = 'from', activateX, waitFacing } = this.route;
     this.x = startAt === 'to' ? to : from;
-    this.walkDir = startAt === 'to' ? -1 : 1;
+    this.walkDir = this.route.fixed ? (this.route.facing ?? -1) : startAt === 'to' ? -1 : 1;
     this.waiting = activateX != null;
     this.dir = this.waiting ? (waitFacing ?? this.walkDir) : this.walkDir;
     this.paused = false;
@@ -61,15 +66,15 @@ export default class Police {
   }
 
   get length() {
-    return this.settings.visionLength * this.visibility;
+    return this.settings.visionLength * this.visibility * (this.route.lengthScale ?? 1);
   }
 
   eye() {
     return { x: this.x + this.dir * 6, y: this.groundY - POLICE.eyeHeight };
   }
 
-  canSee(player, time) {
-    if (player.hidden || !player.visible || time < player.graceUntil) return false;
+  canSee(player, time, blockers = []) {
+    if ((player.hidden && !player.exposed) || !player.visible || time < player.graceUntil) return false;
     const eye = this.eye();
     const half = (this.settings.visionAngleDeg / 2) * DEG;
     const tilt = this.tilt;
@@ -84,20 +89,46 @@ export default class Police {
       const dy = y - eye.y;
       if (dx <= 0) return false;
       if (Math.hypot(dx, dy) > this.length) return false;
-      return Math.abs(Math.atan2(dy, dx) - tilt) <= half;
+      if (Math.abs(Math.atan2(dy, dx) - tilt) > half) return false;
+      return !this.blocked(eye, x, y, blockers);
     });
   }
 
+  // Does any blocker cut the line from the eye to (x, y)?
+  blocked(eye, x, y, blockers) {
+    if (!blockers.length) return false;
+    const line = new Phaser.Geom.Line(eye.x, eye.y, x, y);
+    return blockers.some((rect) => Phaser.Geom.Intersects.LineToRectangle(line, rect));
+  }
+
+  // Nearest point where the ray eye→(x, y) hits a blocker (for drawing the cone's shadow).
+  clipRay(eye, x, y, blockers) {
+    let best = { x, y };
+    let bestD = Math.hypot(x - eye.x, y - eye.y);
+    const line = new Phaser.Geom.Line(eye.x, eye.y, x, y);
+    for (const rect of blockers) {
+      for (const pt of Phaser.Geom.Intersects.GetLineToRectangle(line, rect)) {
+        const d = Math.hypot(pt.x - eye.x, pt.y - eye.y);
+        if (d < bestD) {
+          bestD = d;
+          best = { x: pt.x, y: pt.y };
+        }
+      }
+    }
+    return best;
+  }
+
   // Returns true when the meter is full (player caught).
-  update(time, delta, player, active) {
+  update(time, delta, player, active, blockers = []) {
     const dt = delta / 1000;
+    this.blockers = blockers;
 
     if (active) {
       if (this.waiting && player.x >= this.route.activateX) {
         this.waiting = false;
         this.dir = this.walkDir;
       }
-      this.seeing = this.canSee(player, time);
+      this.seeing = this.canSee(player, time, blockers);
       const rate = dt / this.settings.detectionTime;
       this.detection = this.seeing
         ? Math.min(1, this.detection + rate)
@@ -106,7 +137,7 @@ export default class Police {
       this.seeing = false;
     }
 
-    const halted = this.waiting || (POLICE.stopWhenSuspicious && this.seeing);
+    const halted = this.route.fixed || this.waiting || (POLICE.stopWhenSuspicious && this.seeing);
     if (!halted) this.patrol(time, dt);
 
     const walking = !halted && !this.paused;
@@ -148,10 +179,11 @@ export default class Police {
     const points = [eye];
     for (let i = 0; i <= steps; i++) {
       const a = tilt - half + (i / steps) * half * 2;
-      points.push({
+      const end = {
         x: eye.x + this.dir * Math.cos(a) * this.length,
         y: Math.min(Math.max(this.floorY, this.groundY), eye.y + Math.sin(a) * this.length),
-      });
+      };
+      points.push(this.blockers?.length ? this.clipRay(eye, end.x, end.y, this.blockers) : end);
     }
     const color = lerpColor(this.settings.coneColor ?? POLICE.coneColor, POLICE.alertColor, this.detection);
     this.cone.clear();

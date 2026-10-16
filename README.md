@@ -30,7 +30,8 @@ Then open <http://localhost:8000>.
 
 - **Spring** is a full stage: three hurdles (Meadow Walk, Stepping Stones, Flower Garden), ending at the Garden Gate. Plain-clothes officers (look for the sunglasses) patrol the garden: stay out of their vision cones or hide.
 - **Summer** is a full stage: a hot quarry (keep moving, rest in the shade), a canoe run past a bridge lookout, and a lake swim where you dive under the jetty officer's gaze.
-- Fall and Winter are placeholders for now: press **N** to skip them.
+- **Fall** is a full stage: ride a vintage steam train (duck under bridges, hide between carriages), time three level crossings, and cross a leaf path where the wind reveals hidden holes.
+- Winter is a placeholder for now: press **N** to skip it.
 - Every screen shows which key continues.
 
 ## Deploy to GitHub Pages

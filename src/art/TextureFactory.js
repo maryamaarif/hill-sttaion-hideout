@@ -186,6 +186,59 @@ export function createCommonTextures(scene) {
     g.fillStyle(0x8a5a2e).fillRect(40, 9, 4, 4);
     g.fillRect(86, 9, 4, 4);
   });
+  // Vintage steam train (Fall). Carriage roof = top of the texture; wheels sit on the rail.
+  makeTexture(scene, 'train-carriage', 150, 90, (g) => {
+    g.fillStyle(0x3a2a2a).fillRoundedRect(0, 0, 150, 10, 4); // roof
+    g.fillStyle(0x7a1f2b).fillRect(2, 8, 146, 62); // maroon body
+    g.fillStyle(0xd9a441).fillRect(2, 14, 146, 3); // gold lining
+    g.fillRect(2, 60, 146, 3);
+    for (let wx = 12; wx < 140; wx += 32) {
+      g.fillStyle(0xf6e7c1).fillRoundedRect(wx, 22, 22, 26, 3); // lit windows
+      g.fillStyle(0xffd27a, 0.6).fillRect(wx + 2, 36, 18, 10);
+    }
+    g.fillStyle(0x1e1a1a).fillRect(6, 70, 138, 8); // underframe
+    g.fillStyle(0xb3262b);
+    [24, 50, 100, 126].forEach((x) => g.fillCircle(x, 80, 9));
+    g.fillStyle(0x1e1a1a);
+    [24, 50, 100, 126].forEach((x) => g.fillCircle(x, 80, 3));
+  });
+  makeTexture(scene, 'train-loco', 150, 110, (g) => {
+    g.fillStyle(0x2a2a2e).fillRect(116, 0, 16, 34); // chimney
+    g.fillStyle(0xd9a441).fillRect(112, 0, 24, 5);
+    g.fillStyle(0xd9a441).fillRoundedRect(84, 18, 18, 16, 6); // brass dome
+    g.fillStyle(0x2a2a2e).fillRoundedRect(46, 32, 102, 46, 16); // boiler
+    g.fillStyle(0xd9a441).fillRect(60, 32, 3, 46);
+    g.fillRect(100, 32, 3, 46);
+    g.fillStyle(0x3a3a40).fillRect(0, 10, 50, 70); // cab
+    g.fillStyle(0x1e1e22).fillRect(-2, 8, 54, 6); // cab roof
+    g.fillStyle(0xf6e7c1).fillRect(12, 22, 24, 22); // cab window
+    g.fillStyle(0xb3262b).fillRect(0, 78, 150, 8); // running board
+    g.fillRect(140, 70, 10, 16); // buffer beam
+    g.fillStyle(0xb3262b);
+    [36, 74, 112].forEach((x) => g.fillCircle(x, 94, 15));
+    g.fillStyle(0x1e1a1a);
+    [36, 74, 112].forEach((x) => g.fillCircle(x, 94, 5));
+    g.lineStyle(3, 0xd9a441).lineBetween(36, 94, 112, 94);
+  });
+  // Seen side-on at a level crossing, scrolled as a tile sprite while a train passes.
+  makeTexture(scene, 'crossing-train', 220, 150, (g) => {
+    g.fillStyle(0x4a3326).fillRect(6, 20, 208, 108);
+    g.fillStyle(0x6b4a36);
+    for (let x = 14; x < 210; x += 22) g.fillRect(x, 26, 16, 96);
+    g.fillStyle(0xd9a441).fillRect(6, 64, 208, 4);
+    g.fillStyle(0x1e1a1a).fillRect(0, 128, 220, 8);
+    g.fillStyle(0x2a2a2e);
+    [36, 70, 150, 184].forEach((x) => g.fillCircle(x, 140, 10));
+    g.fillStyle(0x1e1a1a).fillRect(0, 100, 8, 6);
+  });
+  makeTexture(scene, 'puff', 28, 28, (g) => {
+    for (let r = 13; r > 2; r -= 3) g.fillStyle(0xffffff, 0.18).fillCircle(14, 14, r);
+  });
+  makeTexture(scene, 'leaf', 12, 8, (g) => {
+    g.fillStyle(0xffffff).fillEllipse(6, 4, 11, 6);
+    g.lineStyle(1, 0xdddddd).lineBetween(1, 4, 11, 4);
+  });
+
   makeTexture(scene, 'mover-log', 110, 20, (g) => {
     g.fillStyle(0x6b4423).fillRoundedRect(0, 0, 110, 20, 9);
     g.fillStyle(0x8a5a34).fillRoundedRect(2, 2, 106, 12, 6);
@@ -309,6 +362,22 @@ const HIDE_TEXTURES = {
         g.fillTriangle(x - 4.5, y - 2, x - 1.5, y - 8, x + 1, y - 2);
         g.fillTriangle(x - 1, y - 2, x + 1.5, y - 8, x + 4.5, y - 2);
       }
+    },
+  },
+  // Stack of old luggage trunks on a station island.
+  crates: {
+    width: 92,
+    height: 58,
+    draw(g, p) {
+      g.fillStyle(p.woodDark).fillRect(2, 22, 52, 36);
+      g.fillStyle(p.wood).fillRect(5, 25, 46, 30);
+      g.fillStyle(p.woodDark).fillRect(5, 37, 46, 3);
+      g.fillStyle(0x7a1f2b).fillRect(48, 30, 42, 28); // red trunk
+      g.fillStyle(0xd9a441).fillRect(48, 40, 42, 3);
+      g.fillRect(66, 30, 4, 28);
+      g.fillStyle(0x5a4636).fillRoundedRect(14, 2, 54, 22, 4); // suitcase on top
+      g.fillStyle(0xd9a441).fillRect(36, 0, 10, 4);
+      g.fillStyle(0x3a2e24).fillRect(14, 12, 54, 2);
     },
   },
   // Rock overhang: a heavy lip of rock with cool shade beneath (shade + hiding).

@@ -259,7 +259,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   // ----- hiding -----
 
-  // Dim and tuck into the spot (narrow spots pull the player to their centre).
+  // Dim and tuck into the spot (static narrow spots pull the player to their centre).
   enterHiding(spot) {
     this.hidden = true;
     this.hidingSpot = spot;
@@ -269,7 +269,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.anims.stop();
     this.setTexture('player-crouch');
     this.setAlpha(0.6).setTint(0x8a96a8);
-    if (!spot.wide) this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });
+    if (spot.tuck) this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });
     this.scene.tweens.add({ targets: this, scaleY: 0.85, duration: 140, yoyo: true });
   }
 

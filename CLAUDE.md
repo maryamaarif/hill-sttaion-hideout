@@ -39,7 +39,7 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 |---|---|---|---|---|
 | **Spring** | Chill tutorial. Few police, slow patrols. | Calm meadow walk | Stepping stones over a stream | Flower garden with bushes to hide in |
 | **Summer** | | Quarry: jump across rock gaps | Canoeing: steer a canoe, dodge rocks on the river | Swimming: cross a lake with a breath meter, dive under to avoid being seen |
-| **Fall** | Vintage train around the facility showing fall colours | Jump onto and across moving train carriages | Cross the tracks between passing trains | Leaf-covered path: leaf piles hide both pitfalls and hiding spots |
+| **Fall** | Vintage steam train around the guest house, autumn colours. 4 police. | Ride the train: climb on, run the roofs, duck under a footbridge and through a tunnel, hide between carriages from two officers on the halt platform | Cross the tracks: three timed level crossings; a passing train blocks the signal-box officer's view | Leaf path: piles hide pits or hiding places; wind gusts reveal them (and expose hidden players) |
 | **Winter** | Ski run | Downhill slalom: speed builds, slippery controls | Ski-jump gap | Blizzard: visibility drops for both player and police |
 
 ### One shared engine (hard rule)
@@ -59,7 +59,13 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 | Heat: standing still in the open sun drains stamina; any hiding spot is shade; empty = faint (−1 life) | `heatZones[{x,w}]`, season `heat { staminaSeconds, regenPerSec, warnAt, glareAlpha }` | Summer quarry |
 | Hiding spots: narrow (tuck to centre) or wide/tiled (`w`), raised (`y`) | `hidingSpots[{x,kind,y?,w?}]`; textures by kind in `TextureFactory` | bush, flowers, overhang, reeds |
 | Police on raised spots, cone aimed down, lookouts that just turn | `police[{..., y?, tiltDeg?, pauseMs?}]` (`from === to` = lookout) | Summer bridge and jetty |
-| Per-season cone colours (for contrast with the scenery) | palette `cone`, `coneEdge` | Summer |
+| Per-season cone colours (for contrast with the scenery) | palette `cone`, `coneEdge` | Summer, Fall |
+| Train: multi-carriage moving platform (`kind: 'train'`), roofs to run on, gaps between carriages are hiding spots that travel with it | `movers[{kind:'train',mode:'ferry',from,to,y,speed,carriages}]` | Fall ride |
+| Overhead obstacles: duck (↓) to pass under while riding | `obstacles[{x,y,w,h,kind:'footbridge'\|'tunnel'}]` | Fall ride |
+| Fixed officers (never turn) with longer cones; cones can aim up (negative tilt) | `police[{fixed, facing, lengthScale, tiltDeg}]` | Fall halt and signal box |
+| Level crossings on a timetable: signal warns (red + bell), passing train is deadly and **blocks police vision** (cones are clipped by it) | `crossings[{x,w,periodMs,offsetMs,warnMs,passMs}]` | Fall tracks |
+| Leaf piles that look alike: `pit` (fake ground over a gap), `hide`, `plain`; wind gusts thin them, revealing pits and exposing hidden players | `leafPiles[{x,w,kind,hole?}]`, season `wind { intervalMs, warnMs, gustMs, firstGustMs }` | Fall leaf path |
+| Scenery structures | `structures[{kind:'rails'\|'trestle'\|'signalBox',x,w?}]`, platform `solid: false` | Fall |
 | Level difficulty also tightens hurdle timing: less breath and stamina, faster movers | `DifficultySystem.tuneSeason` × `hurdleTimingMultiplier` | all |
 
 Player meters (stamina and breath) float above the player's head only while they matter (`src/ui/PlayerMeters.js`).
@@ -117,9 +123,12 @@ src/seasons/            one config per season (spring.js, summer.js, fall.js, wi
                         + index.js exporting SEASON_ORDER
 src/seasons/layouts/    one layout per season: ground, platforms, water, hiding spots,
                         decor, signs, hurdle start/end lines, goal (pixel coordinates)
-src/entities/           Player (run/jump/hide/swim), Police, HidingSpot, Mover (canoe/log)
+src/entities/           Player (run/jump/hide/swim), Police, HidingSpot, Mover (canoe/log),
+                        Train (multi-carriage mover)
 src/systems/            LevelBuilder (layout → terrain/hazards/triggers), HurdleSystem
                         (start/end trigger zones, checkpoints), HeatSystem (stamina),
+                        CrossingSystem (timed level crossings, vision blockers),
+                        LeafSystem (leaf piles, wind gusts),
                         LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
