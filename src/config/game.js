@@ -23,3 +23,59 @@ export const COINS = {
 };
 
 export const HURDLES_PER_SEASON = 3;
+
+// Player feel. Season physics (gravity, runSpeed, jumpVelocity, friction) layer on top.
+export const PLAYER = {
+  acceleration: 1600, // px/s² toward target speed on ground (scaled by season friction)
+  deceleration: 2000, // px/s² back to 0 with no input (scaled by season friction)
+  airControl: 0.6, // multiplier on accel/decel while airborne
+  coyoteMs: 110, // can still jump this long after walking off a ledge
+  jumpBufferMs: 130, // a jump pressed this early before landing still fires
+  jumpCutMultiplier: 0.45, // releasing jump early multiplies upward speed by this
+  maxFallSpeed: 760,
+  crouchSpeedMultiplier: 0.35,
+  walkAnimThreshold: 25, // px/s
+  body: { width: 16, height: 38, crouchHeight: 24 },
+};
+
+export const RESPAWN = {
+  delayMs: 650, // pause after failing before the player reappears
+  inputLockMs: 300, // controls ignored right after respawn
+  dropHeight: 80, // respawn this far above ground
+  offsetX: 40, // respawn this far past the checkpoint line
+  killMarginY: 60, // fall this far below the screen = failed
+};
+
+export const CAMERA = {
+  lerp: 0.09,
+  lookAheadX: 90,
+};
+
+export const UI = {
+  font: '"Trebuchet MS", Verdana, sans-serif',
+  textColor: '#ffffff',
+  strokeColor: '#3b2a20',
+  bannerHoldMs: 1900,
+  heartSize: 22,
+};
+
+export const DEPTH = {
+  sky: -100,
+  clouds: -95,
+  far: -90,
+  mid: -80,
+  near: -70,
+  decorBack: -10,
+  terrain: 0,
+  decor: 5,
+  player: 10,
+  water: 15,
+  foreground: 20,
+  ambient: 30,
+  popup: 40,
+  hud: 1000,
+};
+
+export const DEBUG = {
+  physics: false, // true = draw physics bodies and trigger zones
+};

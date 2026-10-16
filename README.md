@@ -26,13 +26,11 @@ Then open <http://localhost:8000>.
 | ↓ / S | Hide at a hiding spot / dive |
 | Enter | Confirm on menus |
 
-### Skeleton test keys (temporary)
+### What's playable
 
-While the game is a skeleton, each scene shows which key moves on to the next one:
-
-- **Menu**: Enter starts the game
-- **Game**: N finishes the current season, G triggers game over
-- **Season transition / Level complete / Hub / Game over**: Enter continues
+- **Spring** is a full stage: three hurdles (Meadow Walk, Stepping Stones, Flower Garden), ending at the Garden Gate.
+- Summer, Fall and Winter are placeholders for now: press **N** to skip them.
+- Every screen shows which key continues.
 
 ## Deploy to GitHub Pages
 

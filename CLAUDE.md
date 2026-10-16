@@ -42,6 +42,12 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 | **Fall** | Vintage train around the facility showing fall colours | Jump onto and across moving train carriages | Cross the tracks between passing trains | Leaf-covered path: leaf piles hide both pitfalls and hiding spots |
 | **Winter** | Ski run | Downhill slalom: speed builds, slippery controls | Ski-jump gap | Blizzard: visibility drops for both player and police |
 
+### One shared engine (hard rule)
+- There is **one engine**: `Player`, police, hiding, lives, hurdles, HUD, level building. It never special-cases a season.
+- **A season = a config file (`src/seasons/<season>.js`) + a layout file (`src/seasons/layouts/<season>.js`).** Nothing else.
+- **Every hurdle is a platformer section with one twist** (e.g. water fails you, low friction, moving carriages, low visibility). Never a separate mini-game with its own controls. Canoeing, swimming and skiing are still the same run/jump/hide controls, with the twist expressed through physics, hazards or hiding spots in config.
+- If a twist needs new behaviour, add it to the shared engine as a generic, config-driven feature (e.g. "moving platforms", "visibility radius") that any season can use.
+
 **Seasons must change the RULES, not just the visuals.** Movement, friction, visibility, hazards and hiding spots differ per season. Each season's config file in `src/seasons/` declares these differences.
 
 ### Police
@@ -78,11 +84,18 @@ index.html              loads Phaser (CDN) then src/main.js as a module
 src/main.js             Phaser game config + scene list
 src/scenes/             BootScene, MenuScene, GameScene, SeasonTransitionScene,
                         HubScene, GameOverScene, LevelCompleteScene
-src/seasons/            one config per season (spring.js, summer.js, fall.js, winter.js)
+src/seasons/            one config per season (spring.js, summer.js, fall.js, winter.js):
+                        physics, palette, police, hurdle names/hints, ambient particles
                         + index.js exporting SEASON_ORDER
+src/seasons/layouts/    one layout per season: ground, platforms, water, hiding spots,
+                        decor, signs, hurdle start/end lines, goal (pixel coordinates)
 src/entities/           Player, Police, HidingSpot
-src/systems/            LivesSystem, SaveSystem, AudioSystem, DifficultySystem
-src/config/game.js      global tunables (lives, coin values, controls, screen size)
+src/systems/            LevelBuilder (layout → terrain/hazards/triggers), HurdleSystem
+                        (start/end trigger zones, checkpoints), LivesSystem, SaveSystem,
+                        AudioSystem, DifficultySystem
+src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
+src/ui/                 Hud (hearts, hurdle progress, banners, panels)
+src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)
 src/config/levels.js    difficulty numbers per level
 assets/                 images, audio (add when needed)
 ```
@@ -93,6 +106,14 @@ assets/                 images, audio (add when needed)
 - Run state (current level, season index, lives, coins, elapsed time) is passed between scenes via `scene.start(key, data)`; persistent state (coins, unlocks) goes through `SaveSystem` (localStorage, wrapped in try/catch).
 - Season configs are data; `GameScene` reads the current season config and builds the stage from it, so adding/tuning a season never requires editing the scene.
 - Keep modules small and focused; one class per file in `entities/` and `systems/`.
+- Art is drawn in code from the season palette (no image files yet). Keep the look consistent: soft pastel shapes, dark-brown outlined text, the player in a navy coat, red scarf and brown hat.
+- A season without a `layout` shows a placeholder screen (press N to finish), so the full flow always runs.
+- `window.__game` exposes the Phaser game for debugging/automated playtests. Set `DEBUG.physics` in `src/config/game.js` to see bodies and trigger zones.
+
+### Layout design rules
+- Ground top is `layout.groundY`; the world is one screen tall and scrolls horizontally only.
+- A full running jump covers ~185px horizontally and ~110px vertically with Spring physics. Space gaps so that jumping from anywhere on a platform while holding forward lands safely in Spring; tighten in later seasons/levels.
+- Hurdle start/end lines must span the full path (the player cannot skip them). The respawn checkpoint is the active hurdle's start line.
 
 ## Scene flow
 

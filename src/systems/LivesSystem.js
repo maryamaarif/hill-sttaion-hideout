@@ -6,8 +6,8 @@ export default class LivesSystem {
     this.lives = lives;
   }
 
-  loseLife() {
-    this.lives = Math.max(0, this.lives - LIVES.lossOnCaught);
+  loseLife(amount = LIVES.lossOnCaught) {
+    this.lives = Math.max(0, this.lives - amount);
     return this.lives;
   }
 

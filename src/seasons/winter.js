@@ -3,7 +3,7 @@ export default {
   key: 'winter',
   name: 'Winter',
   tagline: 'Down the ski run',
-  colors: { sky: 0xdfe9f3, ground: 0xffffff, accent: 0x4a6fa5 },
+  palette: { skyTop: 0xdfe9f3, grass: 0xffffff, accent: 0x4a6fa5 },
   physics: { gravity: 900, runSpeed: 240, jumpVelocity: 420, friction: 0.15 },
   visibility: 1.0,
   blizzardVisibility: 0.35,

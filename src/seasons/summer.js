@@ -3,7 +3,7 @@ export default {
   key: 'summer',
   name: 'Summer',
   tagline: 'Quarry, canoe and lake',
-  colors: { sky: 0x8fd3ff, ground: 0xc9a46b, accent: 0x2f8fd8 },
+  palette: { skyTop: 0x8fd3ff, grass: 0xc9a46b, accent: 0x2f8fd8 },
   physics: { gravity: 900, runSpeed: 210, jumpVelocity: 440, friction: 1.0 },
   visibility: 1.0,
   police: { count: 3, patrolSpeed: 60, visionLength: 180, detectionTime: 1.8 },

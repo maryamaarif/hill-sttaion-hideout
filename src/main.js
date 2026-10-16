@@ -1,4 +1,4 @@
-import { SCREEN } from './config/game.js';
+import { SCREEN, DEBUG } from './config/game.js';
 import BootScene from './scenes/BootScene.js';
 import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
@@ -7,16 +7,15 @@ import LevelCompleteScene from './scenes/LevelCompleteScene.js';
 import HubScene from './scenes/HubScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 
-new Phaser.Game({
+window.__game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: SCREEN.width,
   height: SCREEN.height,
   backgroundColor: SCREEN.background,
-  pixelArt: true,
   physics: {
     default: 'arcade',
-    arcade: { debug: false },
+    arcade: { debug: DEBUG.physics },
   },
   scale: {
     mode: Phaser.Scale.FIT,
