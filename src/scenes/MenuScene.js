@@ -1,6 +1,7 @@
 import { createMenu } from './ui.js';
 import { textStyle } from '../ui/Hud.js';
 import { buildBackdrop } from '../art/Backdrop.js';
+import TimeLapse from '../art/TimeLapse.js';
 import { INK } from '../art/TextureFactory.js';
 import { SEASON_ORDER } from '../seasons/index.js';
 import { DEPTH, UI } from '../config/game.js';
@@ -41,6 +42,8 @@ export default class MenuScene extends Phaser.Scene {
       return { layers, particles, name: season.name };
     });
     this.current = 0;
+    // Each change of season plays as a short time-lapse of the hillside.
+    this.lapse = new TimeLapse(this);
     this.seasonLabel = this.add.text(W - 16, H - 16, this.seasons[0].name, textStyle(16)).setOrigin(1, 1).setDepth(DEPTH.hud);
     this.time.addEvent({ delay: SEASON_MS, loop: true, callback: () => this.nextSeason() });
     this.add.rectangle(0, 0, W, H, 0x1d2b3a, 0.22).setOrigin(0).setDepth(DEPTH.ambient - 1);
@@ -69,6 +72,7 @@ export default class MenuScene extends Phaser.Scene {
     const from = this.seasons[this.current];
     this.current = (this.current + 1) % this.seasons.length;
     const to = this.seasons[this.current];
+    this.lapse.play(FADE_MS * 1.4, { days: 1 });
     // Crossfade: the new season fades in while the old one fades out.
     this.tweens.add({ targets: to.layers, alpha: 1, duration: FADE_MS });
     this.tweens.add({ targets: from.layers, alpha: 0, duration: FADE_MS, delay: FADE_MS / 2 });

@@ -9,6 +9,7 @@ import { buildOutfit } from '../art/Character.js';
 import { addOutline } from '../art/TextureFactory.js';
 import { addPanel, setHot } from '../ui/Panels.js';
 import { buildBackdrop } from '../art/Backdrop.js';
+import TimeLapse from '../art/TimeLapse.js';
 
 export default class SeasonTransitionScene extends Phaser.Scene {
   constructor() {
@@ -33,6 +34,10 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     this.nextLayers = this.next === this.prev ? [] : backdrop(this.next);
     this.add.rectangle(0, 0, W, H, 0x1d2b3a, 0.32).setOrigin(0).setDepth(-19); // keep text readable
     this.drawBackground();
+    // Time-lapse over the same hillside: the sun races across, clouds stream past,
+    // days flicker by while the old season dissolves into the new.
+    this.lapse = new TimeLapse(this);
+    this.lapse.play(T.swapMs + T.blendMs, { days: 2 });
     this.tweens.add({ targets: this.blend, t: 1, delay: T.swapMs, duration: T.blendMs, onUpdate: () => this.drawBackground() });
 
     // Old season's particles, then the new season's.

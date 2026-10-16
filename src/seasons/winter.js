@@ -108,6 +108,8 @@ export default {
       { kind: 'wind', gain: 0.1, eventGain: 0.35, low: 300, high: 750, q: 1.5, howl: true },
     ],
   },
+  // Landing puff (JuiceSystem): powder snow.
+  landing: { texture: 'snowflake', count: 14, scale: 1.3, gravity: 120 },
   // Lighting pass (art/Lighting.js): cool blue.
   lighting: { vignette: 0.3, bloom: 0.2, light: 0xe6f2ff, lightAlpha: 0.2, tint: 0xa8c4e8, tintAlpha: 0.12 },
   palette: {

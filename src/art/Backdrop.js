@@ -45,10 +45,16 @@ function fillRidge(ctx, x0, x1, H, shape, color, topLight = null) {
 
 // ----- sky -----
 
+// The sky is painted with a margin all round (SKY_MARGIN of the screen) so a
+// zoomed-out camera (JuiceSystem) never sees past its edges.
+const SKY_MARGIN = 0.12;
 function paintSky(scene, p, key) {
   const { width: W, height: H } = scene.scale;
-  paintTexture(scene, key, W, H, (ctx) => {
-    vGradient(ctx, 0, 0, W, H, [[0, p.skyTop], [0.55, p.skyMid ?? mix(p.skyTop, p.skyBottom, 0.55)], [1, p.skyBottom]]);
+  const mx = Math.ceil(W * SKY_MARGIN);
+  const my = Math.ceil(H * SKY_MARGIN);
+  paintTexture(scene, key, W + mx * 2, H + my * 2, (ctx) => {
+    ctx.translate(mx, my);
+    vGradient(ctx, -mx, -my, W + mx * 2, H + my * 2, [[0, p.skyTop], [0.55, p.skyMid ?? mix(p.skyTop, p.skyBottom, 0.55)], [1, p.skyBottom]]);
     const sx = W * (p.sunX ?? 0.8);
     const sy = p.sunY ?? 92;
     const r = p.sunRadius ?? 34;
@@ -414,7 +420,7 @@ export function buildBackdrop(scene, season, worldWidth) {
 
   const skyKey = `sky-${k}-${Math.random().toString(36).slice(2, 7)}`;
   paintSky(scene, p, skyKey);
-  objects.push(scene.add.image(0, 0, skyKey).setOrigin(0).setScrollFactor(0).setDepth(DEPTH.sky));
+  objects.push(scene.add.image(-Math.ceil(W * SKY_MARGIN), -Math.ceil(H * SKY_MARGIN), skyKey).setOrigin(0).setScrollFactor(0).setDepth(DEPTH.sky));
 
   // Mountains with snow caps, fading into haze.
   const wM = layerWidth(W, worldWidth, F.mountains);

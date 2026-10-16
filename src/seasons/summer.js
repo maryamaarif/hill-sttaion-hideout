@@ -132,6 +132,8 @@ export default {
       { kind: 'birds', gain: 0.12, every: [4, 9], species: ['chirp'], reverb: 0.3 },
     ],
   },
+  // Landing puff (JuiceSystem): dry dust.
+  landing: { texture: 'dust', tint: 0xe8c890, count: 12, scale: 1.6, gravity: 40 },
   // Lighting pass (art/Lighting.js): bright and saturated.
   lighting: { vignette: 0.22, bloom: 0.16, light: 0xfff6c0, lightAlpha: 0.2 },
   palette: {

@@ -93,6 +93,8 @@ export default {
       { kind: 'drips', gain: 0.0001, eventGain: 0.45, every: [0.15, 0.5] },
     ],
   },
+  // Landing puff (JuiceSystem): puddle splash.
+  landing: { texture: 'droplet', tint: 0xcfe9ff, count: 10, scale: 1, gravity: 520 },
   // Lighting pass (art/Lighting.js): soft and fresh.
   lighting: { vignette: 0.22, bloom: 0.25, light: 0xfff2e0, lightAlpha: 0.22, tint: 0xffe4f0, tintAlpha: 0.06 },
   palette: {

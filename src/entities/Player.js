@@ -33,6 +33,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.setScale(BASE_SCALE);
     this.setOrigin(0.5, 0.5);
+    // What you see is a separate sprite that mirrors this one every frame, so squash
+    // and stretch never change the physics body (the hitbox is part of the rules).
+    this.squash = { x: 1, y: 1 };
+    this.view = scene.add.sprite(x, y, 'pl-home-idle').setOrigin(0.5, CHAR_FRAME.feet / CHAR_FRAME.height);
+    this.willRender = () => false;
+    this.onPostUpdate = () => this.syncView();
+    scene.events.on('postupdate', this.onPostUpdate);
+    this.once('destroy', () => {
+      scene.events.off('postupdate', this.onPostUpdate);
+      this.view.destroy();
+    });
 
     this.seasonPhysics = season.physics;
     this.swimConfig = season.swim ?? null;
@@ -368,14 +379,39 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.setAlpha(0.6).setTint(0x8a96a8);
     this.scene.events.emit('player-hide', this);
     if (spot.tuck) this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });
-    this.scene.tweens.add({ targets: this, scaleY: BASE_SCALE * 0.85, duration: 140, yoyo: true });
+    this.scene.tweens.add({ targets: this.squash, y: 0.85, x: 1.08, duration: 140, yoyo: true });
   }
 
   leaveHiding() {
     if (!this.hidden || this.swimming) return;
     this.hidden = false;
     this.hidingSpot = null;
-    this.setAlpha(1).clearTint().setScale(BASE_SCALE);
+    this.setAlpha(1).clearTint();
+  }
+
+  // ----- view (squash & stretch) -----
+
+  // Squash (sx > 1, sy < 1) or stretch, then spring back.
+  squashTo(sx, sy, ms = 150) {
+    this.scene.tweens.killTweensOf(this.squash);
+    this.squash.x = sx;
+    this.squash.y = sy;
+    this.scene.tweens.add({ targets: this.squash, x: 1, y: 1, duration: ms, ease: 'Back.out' });
+  }
+
+  // Copy the physics sprite's look onto the visible one, feet planted.
+  syncView() {
+    const v = this.view;
+    const feetY = this.y + (CHAR_FRAME.feet / CHAR_FRAME.height - this.originY) * this.height * this.scaleY;
+    v.setPosition(this.x, feetY)
+      .setTexture(this.texture.key, this.frame.name)
+      .setFlipX(this.flipX)
+      .setScale(this.scaleX * this.squash.x, this.scaleY * this.squash.y)
+      .setAlpha(this.alpha)
+      .setVisible(this.visible)
+      .setDepth(this.depth);
+    if (this.isTinted) v.setTint(this.tintTopLeft);
+    else v.clearTint();
   }
 
   // ----- lifecycle -----

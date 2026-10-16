@@ -100,7 +100,7 @@ export const POLICE = {
 // Season transition screen timings (ms from the start of the scene).
 export const TRANSITION = {
   swapMs: 900, // old season's icon and particles give way to the new
-  blendMs: 900, // sky and ground colours blend over this long
+  blendMs: 1400, // the hillside dissolves from one season into the next over this long
   titleMs: 1300, // next season's name appears
   livesMs: 1800, // lives carried forward appear
   choiceMs: 2600, // perk cards appear (ENTER skips straight here)
@@ -121,6 +121,22 @@ export const EASY = {
 export const CAMERA = {
   lerp: 0.09,
   lookAheadX: 90,
+};
+
+// Game feel (systems/JuiceSystem.js). Visual only: never changes the rules.
+export const JUICE = {
+  lookAheadRate: 2.2, // how fast the look-ahead eases to the running direction (per s)
+  bigZoom: 0.88, // camera zoom on big moments (train roofs, ski jump, long drops)
+  zoomOutRate: 1.4,
+  zoomInRate: 2.2,
+  zoomHeadroom: 90, // camera may show this much above the world when zoomed out
+  longAirMs: 650, // airborne this long = a big jump
+  punchZoom: 0.035, // quick zoom-in punch on a hurdle cleared
+  screenDepth: 27, // scroll-factor-0 objects from this depth up are screen overlays (UI camera)
+  landSpeed: 260, // landing faster than this squashes and puffs
+  hitStopMs: 120, // freeze when caught
+  slowMoScale: 0.35, // hurdle cleared: slow-motion beat
+  slowMoMs: 420,
 };
 
 export const UI = {

@@ -96,6 +96,8 @@ export default {
       { kind: 'birds', gain: 0.08, every: [6, 12], species: ['chirp'], reverb: 0.4 },
     ],
   },
+  // Landing puff (JuiceSystem): kicked-up leaves.
+  landing: { texture: 'leaf', tint: [0xe8692a, 0xc8401e, 0xf2b234], count: 7, scale: 0.9, gravity: 140 },
   // Lighting pass (art/Lighting.js): warm golden hour.
   lighting: { vignette: 0.32, bloom: 0.16, light: 0xffc46a, lightAlpha: 0.26, tint: 0xffb060, tintAlpha: 0.1 },
   palette: {

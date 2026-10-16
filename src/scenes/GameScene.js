@@ -29,6 +29,7 @@ import { applyEffects } from '../systems/Effects.js';
 import { resolveOutfit, equippedId } from '../systems/Wardrobe.js';
 import ColdSystem from '../systems/ColdSystem.js';
 import WeatherSystem from '../systems/WeatherSystem.js';
+import JuiceSystem from '../systems/JuiceSystem.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
 // One shared engine for every season. The season config + layout decide
@@ -261,6 +262,8 @@ export default class GameScene extends Phaser.Scene {
     cam.setBounds(0, 0, layout.width, H);
     cam.startFollow(this.player, false, CAMERA.lerp, CAMERA.lerp);
     cam.fadeIn(400);
+    // Game feel: camera look-ahead and zoom, squash & stretch, landing puffs, hit-stop.
+    this.juice = new JuiceSystem(this, this.season, this.player);
 
     // The tutorial season shows only the name: no instruction sentences.
     this.hud.showBanner(this.season.name, this.season.tutorial ? '' : `Reach the ${layout.goal.label}. Stay out of sight.`);
@@ -306,6 +309,8 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this.player || this.paused) return;
+    // Hit-stop and slow-motion (JuiceSystem) scale the whole step.
+    delta *= this.juice?.timeScale ?? 1;
     const dt = delta / 1000;
     const player = this.player;
     if (Math.abs(player.x - this.season.layout.spawn.x) > 60) this.fadeKeyHints('left');
@@ -332,7 +337,7 @@ export default class GameScene extends Phaser.Scene {
     player.water = this.level.swimWaters.find((w) => player.x >= w.x && player.x <= w.x + w.w) ?? null;
     player.update(time, delta);
     this.playerShadow.follow(player.x, player.body.bottom, player.onGround && !player.swimming, player.visible && !player.swimming);
-    this.cameras.main.followOffset.x = player.flipX ? CAMERA.lookAheadX : -CAMERA.lookAheadX;
+    this.juice.update(delta, playing);
 
     if (player.submerged && time >= this.nextBubbleAt) {
       this.bubbles.explode(1, player.x + (player.flipX ? -6 : 6), player.body.top);
@@ -484,6 +489,9 @@ export default class GameScene extends Phaser.Scene {
       this.audio.play('heart');
     });
     this.hud.markCleared(i + 1);
+    // A short slow-motion beat and a little zoom punch to savour it.
+    this.juice.slowMo();
+    this.juice.zoomPunch();
     this.hud.popup(this.player.x, this.player.y - 40, '+½ life');
     if (this.season.wardrobe?.swaps?.[hurdle.key]) this.changeOutfit(null); // back to the season outfit
     const next = this.level.hurdles[i + 1];
@@ -505,13 +513,20 @@ export default class GameScene extends Phaser.Scene {
     // Caught: hands up where the officer saw you. Other failures: gone (fell, splashed).
     if (reason === 'caught') this.player.showCaught();
     else this.player.setVisible(false);
-    this.shake(200, 0.006);
+    if (reason === 'caught') {
+      // Hit-stop: everything freezes for a beat, then a harder shake.
+      this.juice.hitStop();
+      this.shake(320, 0.011);
+    } else {
+      this.shake(200, 0.006);
+    }
     this.cameras.main.flash(250, 255, 170, 170);
 
     if (this.lives.isGameOver()) {
       this.audio.stopMusic();
       this.time.delayedCall(250, () => this.audio.play('gameOver'));
       this.cameras.main.fadeOut(900);
+      this.juice.ui.fadeOut(900);
       const { level, items, hidingPlaces } = this.run;
       this.time.delayedCall(1000, () => this.scene.start('GameOverScene', { level, reason, items, hidingPlaces, seasonKey: this.season.key }));
       return;
