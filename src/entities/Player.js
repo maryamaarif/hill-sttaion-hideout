@@ -8,12 +8,16 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 // Shared player for every season. Season config changes how it feels:
 //   physics  runSpeed, jumpVelocity, friction
 //   swim     speeds and breath for water marked swim: true
+//   ski      auto-run speeds on skis, and glide strength after a ski-jump launch
 // The controls never change: move, jump, Down to hide (or dive in water).
+// On skis Right speeds up and Left slows down instead of walking.
 //
 // The scene sets these each frame before update():
 //   nearSpot  hiding spot the player stands in (or null)
 //   water     { surfaceY } when over swimmable water (or null)
 //   carrier   moving platform the player is riding (or null)
+//   skiing    on skis (inside a ski zone, or airborne after leaving one)
+// SlopeSystem sets slopeGrounded when the player stands on a slope.
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, season) {
     super(scene, x, y, 'player-idle');
@@ -22,6 +26,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.seasonPhysics = season.physics;
     this.swimConfig = season.swim ?? null;
+    this.skiConfig = season.ski ?? null;
+    this.worldGravity = season.physics.gravity;
     this.setDepth(DEPTH.player);
     this.setCollideWorldBounds(true);
     this.body.maxVelocity.set(10000, PLAYER.maxFallSpeed);
@@ -43,6 +49,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.water = null;
     this.carrier = null;
     this.inheritVx = 0;
+    this.skiing = false;
+    this.slopeGrounded = false;
+    this.launched = false;
     this.swimming = false;
     this.diving = false;
     this.breath = 1;
@@ -60,7 +69,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   get onGround() {
-    return this.body.blocked.down || this.body.touching.down;
+    return this.body.blocked.down || this.body.touching.down || this.slopeGrounded;
   }
 
   get submerged() {
@@ -128,15 +137,22 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.crouching = false;
         this.setStandingBody(true);
       }
-      this.setVelocityY(-this.seasonPhysics.jumpVelocity);
       this.jumping = true;
       this.jumpCut = false;
       this.jumpPressedAt = -Infinity;
+      // Jumping on a ski-jump ramp is a launch: height comes from speed, not the jump.
+      if (this.rampLaunch && this.body.velocity.x > 0) this.launch(-this.body.velocity.x * this.rampLaunch);
+      else this.setVelocityY(-this.seasonPhysics.jumpVelocity);
     }
     // Variable jump height: let go early for a short hop.
     if (this.jumping && !jumpHeld && !this.jumpCut && this.body.velocity.y < 0) {
       this.setVelocityY(this.body.velocity.y * PLAYER.jumpCutMultiplier);
       this.jumpCut = true;
+    }
+
+    if (this.skiing && this.skiConfig) {
+      this.ski(dt, dir, grounded, jumpHeld);
+      return;
     }
 
     // Horizontal: accelerate toward target speed. Season friction scales grip.
@@ -160,6 +176,34 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     else if (Math.abs(this.body.velocity.x) > PLAYER.walkAnimThreshold) pose = 'walk';
     else pose = 'player-idle';
     this.showPose(pose);
+  }
+
+  // ----- skiing -----
+
+  // Auto-run right: Right speeds up, Left slows down, nothing = cruise. After a
+  // ski-jump launch, holding Jump glides (lighter gravity) to clear a big gap.
+  ski(dt, dir, grounded, jumpHeld) {
+    const cfg = this.skiConfig;
+    if (grounded && this.body.velocity.y >= 0) this.launched = false;
+    const target = dir > 0 ? cfg.maxSpeed : dir < 0 ? cfg.minSpeed : cfg.cruiseSpeed;
+    const rate = grounded ? cfg.acceleration : cfg.airAcceleration;
+    this.setVelocityX(moveTowards(this.body.velocity.x, target, rate * dt));
+    this.setFlipX(false);
+
+    this.gliding = this.launched && !grounded && jumpHeld;
+    this.body.setGravityY(this.gliding ? -this.worldGravity * (1 - cfg.glideGravity) : 0);
+
+    this.anims.stop();
+    this.setTexture(grounded ? (this.crouching ? 'player-crouch' : 'player-ski') : 'player-ski-air');
+  }
+
+  // Thrown into the air off a ski-jump ramp.
+  launch(vy) {
+    this.setVelocityY(vy);
+    this.launched = true;
+    this.jumping = true;
+    this.jumpCut = true; // a launch is not shortened by letting go of Jump
+    this.scene.events.emit('player-launch', this);
   }
 
   showPose(pose) {
@@ -299,6 +343,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.breathLocked = false;
     this.inheritVx = 0;
     this.carrier = null;
+    this.launched = false;
+    this.gliding = false;
+    this.slopeGrounded = false;
+    this.body.setGravityY(0);
     this.graceUntil = time + RESPAWN.graceMs;
     this.setFlipX(false);
     this.setVisible(true);

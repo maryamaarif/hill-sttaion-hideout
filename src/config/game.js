@@ -48,6 +48,11 @@ export const PLAYER = {
   },
 };
 
+// Smooth slopes (Winter ski run).
+export const SLOPES = {
+  stickDistance: 12, // stay glued to a downhill slope within this many pixels
+};
+
 // Moving platforms (canoes, logs). Speeds are per mover in the season layout.
 export const MOVERS = {
   boardDelayMs: 250, // a waiting canoe sets off this long after the player steps in
@@ -79,6 +84,10 @@ export const POLICE = {
   coneAlpha: 0.38,
   meterWidth: 36,
   meterOffsetY: 64, // meter sits this far above the officer's feet
+  // Following footprints (Winter).
+  trackSpeedScale: 1.3, // officers hurry along a trail
+  trailStepRange: 140, // next footprint must be this close to count as the same trail
+  searchMs: 1800, // look around where the trail ends before going back
 };
 
 export const CAMERA = {

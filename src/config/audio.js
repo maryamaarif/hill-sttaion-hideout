@@ -62,6 +62,11 @@ export const SFX = {
   ],
   // Wind gust over the leaf path.
   whoosh: [{ freq: 3000, to: 500, noise: true, start: 0, duration: 1.4, gain: 0.35 }],
+  // Off the ski-jump ramp.
+  launch: [
+    { freq: 300, to: 900, type: 'triangle', start: 0, duration: 0.35, gain: 0.3 },
+    { freq: 2500, to: 800, noise: true, start: 0, duration: 0.5, gain: 0.25 },
+  ],
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
 };

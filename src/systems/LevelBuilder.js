@@ -17,7 +17,10 @@ import Train from '../entities/Train.js';
 //                [{ x, y, w, h, kind }]  overhead: 'footbridge', 'tunnel' (duck under them)
 //   movers       [{ kind, mode, from, to, y, w, speed, phase? }]  see entities/Mover.js
 //                kind 'train': see entities/Train.js
+//                [{ x, kind, h? }]       on the ground or a slope: 'pine', 'rock' (jump them)
 //   structures   [{ kind, x, w? }]      scenery: 'trestle', 'rails', 'signalBox'
+//   slopes       [{ x, w, y1, y2, launch? }]  smooth slopes (see systems/SlopeSystem.js)
+//   goal         { x, label, kind? }    kind 'house' = the guest house (Winter)
 //   hidingSpots  [{ x, kind, y?, w? }]   see entities/HidingSpot.js
 //   trees, flowerBeds, signs, heatZones, police, extraPolice, goal
 
@@ -33,10 +36,77 @@ function addTrigger(scene, x, y, w, h) {
   return zone;
 }
 
-// Top of the ground at x (ground segments can sit at different heights).
+// Top of the ground at x: slopes first, then ground segments (which can sit at
+// different heights), then the layout's base ground line.
 function groundTopAt(layout, x) {
+  const slope = (layout.slopes ?? []).find((s) => x >= s.x && x <= s.x + s.w);
+  if (slope) return slope.y1 + ((x - slope.x) / slope.w) * (slope.y2 - slope.y1);
   const seg = layout.ground.find((s) => x >= s.x && x < s.x + s.w);
   return seg?.y ?? layout.groundY;
+}
+
+function drawSlope(g, p, { x, w, y1, y2, launch }, H) {
+  g.fillStyle(p.dirt).fillPoints([{ x, y: y1 }, { x: x + w, y: y2 }, { x: x + w, y: H }, { x, y: H }], true);
+  g.fillStyle(p.grassDark).fillPoints([{ x, y: y1 + 8 }, { x: x + w, y: y2 + 8 }, { x: x + w, y: y2 + 13 }, { x, y: y1 + 13 }], true);
+  g.fillStyle(p.grass).fillPoints([{ x, y: y1 - 2 }, { x: x + w, y: y2 - 2 }, { x: x + w, y: y2 + 9 }, { x, y: y1 + 9 }], true);
+  if (launch) {
+    // Ski-jump ramp: timber deck on trestle legs, with a red lip at the top.
+    const yAt = (px) => y1 + ((px - x) / w) * (y2 - y1);
+    g.fillStyle(p.woodDark);
+    for (let px = x + 10; px < x + w; px += 26) g.fillRect(px, yAt(px), 5, H - yAt(px));
+    g.fillStyle(p.wood).fillPoints([{ x, y: y1 - 6 }, { x: x + w, y: y2 - 6 }, { x: x + w, y: y2 + 4 }, { x, y: y1 + 4 }], true);
+    g.fillStyle(0xd94f4a).fillRect(x + w - 8, y2 - 10, 8, 14);
+  }
+}
+
+function drawGroundObstacle(g, p, kind, x, w, top, base) {
+  if (kind === 'pine') {
+    g.fillStyle(p.trunk).fillRect(x + w / 2 - 2, base - 8, 4, 8);
+    g.fillStyle(p.blossomDark).fillTriangle(x - 4, base - 6, x + w + 4, base - 6, x + w / 2, top);
+    g.fillStyle(p.blossomLight).fillTriangle(x + 2, top + 14, x + w - 2, top + 14, x + w / 2, top);
+  } else {
+    g.fillStyle(p.rockDark).fillEllipse(x + w / 2, base - (base - top) / 2 + 2, w + 6, base - top + 4);
+    g.fillStyle(p.rock).fillEllipse(x + w / 2 - 2, base - (base - top) / 2, w, base - top);
+    g.fillStyle(p.grass).fillEllipse(x + w / 2, top + 4, w * 0.7, 8);
+  }
+}
+
+// The guest house as Winter's goal: warm lit windows glowing through the snow.
+function drawHouseGoal(scene, p, x, groundY, label) {
+  const c = p.house;
+  const g = scene.add.graphics().setDepth(DEPTH.decorBack);
+  const y = groundY + 2;
+  g.fillStyle(c.window, 0.18).fillCircle(x, y - 70, 150);
+  g.fillStyle(c.trim).fillRect(x + 50, y - 168, 18, 46); // chimney
+  g.fillStyle(c.wall).fillRect(x - 110, y - 110, 220, 110);
+  g.fillStyle(c.roof).fillTriangle(x - 130, y - 106, x + 130, y - 106, x, y - 178);
+  g.fillStyle(0xffffff).fillTriangle(x - 120, y - 110, x + 120, y - 110, x, y - 172); // snow on roof
+  g.fillStyle(c.roof).fillTriangle(x - 104, y - 112, x + 104, y - 112, x, y - 162);
+  g.fillStyle(0xffffff).fillRect(x - 132, y - 112, 264, 8);
+  for (const wx of [x - 86, x - 52, x + 36, x + 70]) {
+    g.fillStyle(c.window, 0.35).fillCircle(wx + 8, y - 70, 22);
+    g.fillStyle(c.window).fillRect(wx, y - 82, 18, 22);
+    g.fillStyle(c.trim).fillRect(wx + 8, y - 82, 2, 22);
+  }
+  g.fillStyle(c.window).fillRect(x - 14, y - 52, 28, 52); // open, lit door
+  g.fillStyle(c.trim).fillRect(x - 18, y - 56, 36, 4);
+  g.fillStyle(c.window).fillCircle(x, y - 134, 9); // attic window
+  scene.add
+    .particles(x + 59, y - 170, 'puff', {
+      speedY: { min: -40, max: -20 },
+      speedX: { min: -20, max: 0 },
+      scale: { start: 0.4, end: 1.6 },
+      alpha: { start: 0.6, end: 0 },
+      lifespan: 2400,
+      frequency: 300,
+    })
+    .setDepth(DEPTH.decorBack);
+  scene.add
+    .text(x, y - 200, label, {
+      fontFamily: UI.font, fontSize: '20px', color: UI.textColor, stroke: UI.strokeColor, strokeThickness: 4,
+    })
+    .setOrigin(0.5)
+    .setDepth(DEPTH.decor);
 }
 
 function drawGround(g, p, x, y, w, h) {
@@ -300,6 +370,7 @@ export default function buildLevel(scene, season) {
 
   const terrain = scene.add.graphics().setDepth(DEPTH.terrain);
   for (const { x, w } of layout.pits ?? []) drawPit(terrain, p, x, gy, w, H);
+  for (const slope of layout.slopes ?? []) drawSlope(terrain, p, slope, H);
   for (const { x, w, y = gy, kind } of layout.ground) {
     if (kind === 'rock') drawRock(terrain, p, x, y, w, H - y);
     else drawGround(terrain, p, x, y, w, H - y);
@@ -330,6 +401,15 @@ export default function buildLevel(scene, season) {
       obstacles.push(addTrigger(scene, ob.x + 4, ob.y, ob.w - 8, ob.h - 2));
       continue;
     }
+    if (ob.kind === 'pine' || ob.kind === 'rock') {
+      // Sits on the ground or slope; forgiving hitbox.
+      const w = ob.kind === 'pine' ? 22 : 28;
+      const base = groundTopAt(layout, ob.x + w / 2);
+      const top = base - (ob.h ?? (ob.kind === 'pine' ? 38 : 24));
+      drawGroundObstacle(terrain, p, ob.kind, ob.x, w, top, base);
+      obstacles.push(addTrigger(scene, ob.x + 5, top + 6, w - 10, base - top - 6));
+      continue;
+    }
     if (ob.kind === 'snag') drawSnag(front, p, ob.x, ob.top, surfaceY);
     // Forgiving hitbox: narrower and lower than the drawing.
     obstacles.push(addTrigger(scene, ob.x + 4, ob.top + 6, 8, surfaceY - ob.top - 6));
@@ -347,13 +427,15 @@ export default function buildLevel(scene, season) {
 
   for (const { x, text } of layout.signs ?? []) addSign(scene, p, x, groundTopAt(layout, x), text);
 
-  addGoal(scene, p, layout.goal, groundTopAt(layout, layout.goal.x));
+  if (layout.goal.kind === 'house') drawHouseGoal(scene, p, layout.goal.x, groundTopAt(layout, layout.goal.x), layout.goal.label);
+  else addGoal(scene, p, layout.goal, groundTopAt(layout, layout.goal.x));
   const goalZone = addTrigger(scene, layout.goal.x - 20, 0, 40, H);
 
   // Merge the season's hurdle definitions with this layout's trigger lines.
   const hurdles = season.hurdles.map((h) => ({ ...h, ...layout.hurdles[h.key] }));
 
-  return { solids, hazards, obstacles, swimWaters, movers, hidingSpots, goalZone, hurdles };
+  const groundAt = (x) => groundTopAt(layout, x);
+  return { solids, hazards, obstacles, swimWaters, movers, hidingSpots, goalZone, hurdles, groundAt };
 }
 
 export { addTrigger, groundTopAt };

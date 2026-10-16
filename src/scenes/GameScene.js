@@ -13,6 +13,9 @@ import Police from '../entities/Police.js';
 import HeatSystem from '../systems/HeatSystem.js';
 import CrossingSystem from '../systems/CrossingSystem.js';
 import LeafSystem from '../systems/LeafSystem.js';
+import SlopeSystem from '../systems/SlopeSystem.js';
+import BlizzardSystem from '../systems/BlizzardSystem.js';
+import FootprintSystem from '../systems/FootprintSystem.js';
 import Hud from '../ui/Hud.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
@@ -35,7 +38,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     const { layout, physics } = this.season;
-    this.events.once('shutdown', () => this.events.off('player-enter-water').off('player-dive').off('player-out-of-breath'));
+    this.events.once('shutdown', () => this.events.off('player-enter-water').off('player-dive').off('player-out-of-breath').off('player-launch'));
     const { width: W, height: H } = this.scale;
     this.state = 'playing';
     this.lives = new LivesSystem(data.lives);
@@ -71,13 +74,21 @@ export default class GameScene extends Phaser.Scene {
     const bonus = DifficultySystem.forLevel(data.level).policeCountBonus;
     const routes = [...(layout.police ?? []), ...(layout.extraPolice ?? []).slice(0, bonus)];
     this.police = routes.map(
-      (route) => new Police(this, route, policeSettings, layout.groundY, this.season.visibility ?? 1),
+      (route) =>
+        new Police(this, route, policeSettings, layout.groundY, {
+          visibility: this.season.visibility ?? 1,
+          groundAt: this.level.groundAt,
+        }),
     );
 
     this.heat = new HeatSystem(this, layout.heatZones, this.season.heat, layout.groundY);
     this.crossings = new CrossingSystem(this, layout.crossings, layout.groundY, this.season.palette, this.audio);
     this.leaves = new LeafSystem(this, layout.leafPiles, this.season.wind, layout.groundY, this.season.palette, this.audio);
     this.hidingSpots.push(...this.leaves.hidingSpots);
+    this.slopes = new SlopeSystem(layout.slopes);
+    this.skiZones = layout.skiZones ?? [];
+    this.blizzard = new BlizzardSystem(this, layout.blizzardZones, this.season.blizzard);
+    this.footprints = new FootprintSystem(this, layout.footprintZones, this.season.footprints);
     this.meters = new PlayerMeters(this);
 
     this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
@@ -118,6 +129,7 @@ export default class GameScene extends Phaser.Scene {
       this.audio.play('splashSoft');
     });
     this.events.on('player-dive', () => this.audio.play('dive'));
+    this.events.on('player-launch', () => this.audio.play('launch'));
     this.events.on('player-out-of-breath', (p) => {
       this.audio.play('gasp');
       this.hud.popup(p.x, p.y - 40, 'Out of breath!', '#bfeaff');
@@ -143,6 +155,13 @@ export default class GameScene extends Phaser.Scene {
     if (rider) player.x += rider.dx;
     player.carrier = rider ?? null;
 
+    // Slopes: stick to the snow; ski zones put the player on skis (they stay on
+    // through the air after a jump until landing outside the zone).
+    this.slopes.apply(player);
+    const inSkiZone = this.skiZones.some((z) => player.x >= z.x && player.x <= z.x + z.w);
+    player.skiing = inSkiZone || (player.skiing && !player.onGround);
+    if (!player.skiing && player.body.gravity.y) player.body.setGravityY(0);
+
     // Being carried out of a wide hiding spot (reeds) uncovers the player.
     if (player.hidingSpot && !player.hidingSpot.contains(player)) player.leaveHiding();
 
@@ -162,7 +181,15 @@ export default class GameScene extends Phaser.Scene {
     player.exposed = Boolean(player.hidingSpot?.exposed);
     const trainHit = this.crossings.update(time, dt, player) === 'hit' && playing;
     const blockers = this.crossings.blockers();
-    const catcher = this.police.find((officer) => officer.update(time, delta, player, playing, blockers));
+    // Blizzard: fog around the player, shorter police cones; footprints in the snow.
+    this.blizzard.update(player);
+    this.footprints.update(time, player);
+    const clues = this.footprints.clues();
+    const baseVisibility = this.season.visibility ?? 1;
+    const catcher = this.police.find((officer) => {
+      officer.visibility = baseVisibility * this.blizzard.visibilityAt(officer.x);
+      return officer.update(time, delta, player, playing, blockers, clues);
+    });
     const heat = playing ? this.heat.update(dt, player, Boolean(spot)) : null;
     this.meters.update(player, [
       { kind: 'stamina', value: this.heat.stamina, show: this.heat.active && (this.heat.stamina < 1 || this.heat.standingInSun) },
@@ -235,11 +262,14 @@ export default class GameScene extends Phaser.Scene {
     this.hud.popup(this.player.x, this.player.y - 40, message, '#ffb3b3');
     this.time.delayedCall(RESPAWN.delayMs, () => {
       const x = this.hurdles.checkpointX(this.season.layout.spawn.x) + RESPAWN.offsetX;
-      const y = this.season.layout.groundY - RESPAWN.dropHeight;
+      const y = this.level.groundAt(x) - RESPAWN.dropHeight;
       this.player.respawn(x, y, this.time.now, RESPAWN.inputLockMs);
       this.police.forEach((officer) => officer.reset());
       this.movers.forEach((m) => m.reset());
       this.heat.reset();
+      this.slopes.reset();
+      this.footprints.reset();
+      this.player.skiing = false;
       this.hud.setHidden(false);
       this.state = 'playing';
     });

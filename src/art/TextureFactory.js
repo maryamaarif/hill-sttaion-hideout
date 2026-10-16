@@ -143,6 +143,41 @@ export function createCommonTextures(scene) {
     makeTexture(scene, `police-${pose}`, POLICE_FRAME.width, POLICE_FRAME.height, (g) => drawPolice(g, pose));
   }
 
+  // On skis (Winter): skis under the feet with upturned tips, and a pole.
+  const skis = (g, y, pole) => {
+    g.fillStyle(0x2f6fd8).fillRect(0, y, 32, 2);
+    g.fillRect(30, y - 2, 2, 2);
+    g.lineStyle(1, 0x3b2a20).lineBetween(pole[0], pole[1], pole[2], pole[3]);
+  };
+  makeTexture(scene, 'player-ski', PLAYER_FRAME.width, PLAYER_FRAME.height, (g) => {
+    drawPlayer(g, 'idle');
+    skis(g, 46, [18, 32, 8, 46]);
+  });
+  makeTexture(scene, 'player-ski-air', PLAYER_FRAME.width, PLAYER_FRAME.height, (g) => {
+    drawPlayer(g, 'jump');
+    skis(g, 45, [18, 30, 4, 40]);
+  });
+  makeTexture(scene, 'police-ski', POLICE_FRAME.width, POLICE_FRAME.height, (g) => {
+    drawPolice(g, 'idle');
+    g.fillStyle(0xd94f4a).fillRect(0, 48, 32, 2);
+    g.fillRect(30, 46, 2, 2);
+    g.lineStyle(1, 0x2a2a2e).lineBetween(18, 30, 8, 48);
+  });
+
+  // Winter: snowflakes, boot prints, and a soft brush that cuts the blizzard fog.
+  makeTexture(scene, 'snowflake', 6, 6, (g) => {
+    g.fillStyle(0xffffff).fillCircle(3, 3, 2.5);
+  });
+  makeTexture(scene, 'footprint', 12, 6, (g) => {
+    g.fillStyle(0x7d93a8).fillEllipse(3, 3, 6, 4);
+    g.fillEllipse(9, 2, 6, 4);
+  });
+  makeTexture(scene, 'fog-hole', 400, 400, (g) => {
+    // Overlapping circles build a soft edge: fully clear in the middle.
+    for (let r = 200; r > 0; r -= 8) g.fillStyle(0xffffff, 0.09).fillCircle(200, 200, r);
+    g.fillStyle(0xffffff).fillCircle(200, 200, 110);
+  });
+
   makeTexture(scene, 'heart-full', 22, 20, (g) => drawHeart(g, 0xe84a5f));
   // Empty slot: dark outline, pale fill. Readable on light skies and dark menus.
   makeTexture(scene, 'heart-empty', 22, 20, (g) => {
@@ -365,6 +400,34 @@ const HIDE_TEXTURES = {
     },
   },
   // Stack of old luggage trunks on a station island.
+  // Small timber hut buried in snow (Winter blizzard).
+  hut: {
+    width: 104,
+    height: 86,
+    draw(g, p) {
+      g.fillStyle(p.woodDark).fillRect(12, 34, 80, 52);
+      g.fillStyle(p.wood).fillRect(16, 38, 72, 48);
+      g.fillStyle(p.woodDark);
+      for (let y = 46; y < 86; y += 10) g.fillRect(16, y, 72, 2);
+      g.fillStyle(0x2b2320).fillRect(42, 52, 22, 34); // dark doorway
+      g.fillStyle(p.house.window).fillRect(68, 50, 12, 10);
+      g.fillStyle(0xffffff).fillPoints([{ x: 0, y: 40 }, { x: 52, y: 4 }, { x: 104, y: 40 }, { x: 96, y: 46 }, { x: 8, y: 46 }], true);
+      g.fillStyle(p.grassDark).fillRect(8, 42, 88, 4);
+      g.fillStyle(0xffffff).fillEllipse(30, 84, 50, 14);
+      g.fillEllipse(84, 84, 40, 12);
+    },
+  },
+  // Wind-piled snowdrift: deep enough to crouch behind.
+  drift: {
+    width: 108,
+    height: 48,
+    draw(g, p) {
+      g.fillStyle(p.grassDark).fillEllipse(54, 34, 108, 30);
+      g.fillStyle(0xffffff).fillEllipse(48, 30, 96, 36);
+      g.fillEllipse(70, 22, 60, 30);
+      g.fillStyle(p.grassDark, 0.6).fillEllipse(40, 40, 60, 8);
+    },
+  },
   crates: {
     width: 92,
     height: 58,
@@ -422,6 +485,19 @@ export function createSeasonTextures(scene, season) {
   const p = season.palette;
   const k = season.key;
 
+  if (p.treeStyle === 'pine') {
+    // Snowy pine: dark green tiers with snow on each.
+    makeTexture(scene, `tree-${k}`, 140, 170, (g) => {
+      g.fillStyle(p.trunk).fillRect(64, 140, 12, 30);
+      for (let i = 0; i < 4; i++) {
+        const y = 30 + i * 30;
+        const half = 26 + i * 12;
+        g.fillStyle(p.blossomDark).fillTriangle(70 - half, y + 44, 70 + half, y + 44, 70, y - 6);
+        g.fillStyle(p.blossom).fillTriangle(70 - half + 6, y + 40, 70 + half - 6, y + 40, 70, y);
+        g.fillStyle(p.blossomLight).fillTriangle(70 - half * 0.55, y + 16, 70 + half * 0.55, y + 16, 70, y);
+      }
+    });
+  }
   makeTexture(scene, `tree-${k}`, 140, 170, (g) => {
     g.fillStyle(p.trunk);
     g.fillPoints([{ x: 63, y: 170 }, { x: 77, y: 170 }, { x: 73, y: 80 }, { x: 67, y: 80 }], true);

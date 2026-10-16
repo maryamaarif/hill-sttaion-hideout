@@ -40,7 +40,7 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 | **Spring** | Chill tutorial. Few police, slow patrols. | Calm meadow walk | Stepping stones over a stream | Flower garden with bushes to hide in |
 | **Summer** | | Quarry: jump across rock gaps | Canoeing: steer a canoe, dodge rocks on the river | Swimming: cross a lake with a breath meter, dive under to avoid being seen |
 | **Fall** | Vintage steam train around the guest house, autumn colours. 4 police. | Ride the train: climb on, run the roofs, duck under a footbridge and through a tunnel, hide between carriages from two officers on the halt platform | Cross the tracks: three timed level crossings; a passing train blocks the signal-box officer's view | Leaf path: piles hide pits or hiding places; wind gusts reveal them (and expose hidden players) |
-| **Winter** | Ski run | Downhill slalom: speed builds, slippery controls | Ski-jump gap | Blizzard: visibility drops for both player and police |
+| **Winter** | Snow, slippery everywhere. 4 police. Ends at the guest house (level complete). | Ski slope: on skis, auto-run downhill (→ faster, ← slower), jump rocks and pines, outrun two police skiers | Ski jump: full speed off the ramp, hold Jump to glide over a big gap | Blizzard: view shrinks to a circle, police cones shrink, footprints give you away (police follow them); hide in huts and drifts |
 
 ### One shared engine (hard rule)
 - There is **one engine**: `Player`, police, hiding, lives, hurdles, HUD, level building. It never special-cases a season.
@@ -66,6 +66,14 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 | Level crossings on a timetable: signal warns (red + bell), passing train is deadly and **blocks police vision** (cones are clipped by it) | `crossings[{x,w,periodMs,offsetMs,warnMs,passMs}]` | Fall tracks |
 | Leaf piles that look alike: `pit` (fake ground over a gap), `hide`, `plain`; wind gusts thin them, revealing pits and exposing hidden players | `leafPiles[{x,w,kind,hole?}]`, season `wind { intervalMs, warnMs, gustMs, firstGustMs }` | Fall leaf path |
 | Scenery structures | `structures[{kind:'rails'\|'trestle'\|'signalBox',x,w?}]`, platform `solid: false` | Fall |
+| Low friction everywhere (slide, slow to stop) | season `physics.friction` (e.g. 0.22) | Winter |
+| Smooth slopes the player sticks to; `launch` slopes are ski-jump ramps (jumping on one is a speed-based launch) | `slopes[{x,w,y1,y2,launch?}]` | Winter |
+| Skis: auto-run right (→ faster, ← slower), stays on through the air; hold Jump after a launch to glide | `skiZones[{x,w}]`, season `ski { cruiseSpeed, minSpeed, maxSpeed, acceleration, airAcceleration, glideGravity }` | Winter |
+| Ground obstacles on ground or slope: jump them | `obstacles[{x,kind:'pine'\|'rock',h?}]` | Winter |
+| Blizzard: fog cuts view to a circle around the player; police cones shrink | `blizzardZones[{x,w}]`, season `blizzard { radius, fogColor, fogAlpha, policeVisibility, fadeDistance }` | Winter |
+| Footprints that fade; police who see one follow the trail, search where it ends, return | `footprintZones[{x,w}]`, season `footprints { spacing, lifeMs }`, `POLICE.trackSpeedScale/trailStepRange/searchMs` | Winter |
+| Officers on skis, faster patrols, standing on slopes (ground height follows the terrain) | `police[{skis, speedScale}]` | Winter |
+| Guest house as the goal | `goal { kind: 'house' }` | Winter |
 | Level difficulty also tightens hurdle timing: less breath and stamina, faster movers | `DifficultySystem.tuneSeason` × `hurdleTimingMultiplier` | all |
 
 Player meters (stamina and breath) float above the player's head only while they matter (`src/ui/PlayerMeters.js`).
@@ -123,12 +131,13 @@ src/seasons/            one config per season (spring.js, summer.js, fall.js, wi
                         + index.js exporting SEASON_ORDER
 src/seasons/layouts/    one layout per season: ground, platforms, water, hiding spots,
                         decor, signs, hurdle start/end lines, goal (pixel coordinates)
-src/entities/           Player (run/jump/hide/swim), Police, HidingSpot, Mover (canoe/log),
+src/entities/           Player (run/jump/hide/swim/ski), Police, HidingSpot, Mover (canoe/log),
                         Train (multi-carriage mover)
 src/systems/            LevelBuilder (layout → terrain/hazards/triggers), HurdleSystem
                         (start/end trigger zones, checkpoints), HeatSystem (stamina),
                         CrossingSystem (timed level crossings, vision blockers),
-                        LeafSystem (leaf piles, wind gusts),
+                        LeafSystem (leaf piles, wind gusts), SlopeSystem (slopes, ramps),
+                        BlizzardSystem (fog, snow), FootprintSystem (trails police follow),
                         LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
