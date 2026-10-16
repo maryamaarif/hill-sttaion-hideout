@@ -1,4 +1,4 @@
-import { paintTexture, css, shade } from './Paint.js';
+import { paintTexture, css, shade, radialGlow } from './Paint.js';
 
 // Characters: a jointed skeleton (hips, knees, ankles, shoulders, elbows, hands,
 // head) posed procedurally, then painted with shaded limbs and clothing layers:
@@ -90,11 +90,49 @@ function stroke(ctx, pts, width, color, alpha = 1) {
   for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
   ctx.stroke();
 }
-// A shaded limb: base, a darker back edge and a soft highlight on the lit side.
-function limb(ctx, pts, width, color) {
-  stroke(ctx, pts, width, shade(color, 0.72));
-  stroke(ctx, pts.map((p) => ({ x: p.x + width * 0.08, y: p.y - width * 0.05 })), width * 0.82, color);
-  stroke(ctx, pts.map((p) => ({ x: p.x + width * 0.22, y: p.y - width * 0.18 })), width * 0.3, shade(color, 1.25), 0.55);
+// A tapered capsule along a polyline (thicker at the start: thigh → ankle,
+// shoulder → wrist), as one filled shape so muscles read as volumes.
+function taper(ctx, pts, widths) {
+  // Each joint disc and segment is filled on its own (no winding holes).
+  for (let i = 0; i < pts.length; i++) {
+    ctx.beginPath();
+    ctx.arc(pts[i].x, pts[i].y, widths[i] / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const nx = -(b.y - a.y) / len;
+    const ny = (b.x - a.x) / len;
+    ctx.beginPath();
+    ctx.moveTo(a.x + nx * widths[i] / 2, a.y + ny * widths[i] / 2);
+    ctx.lineTo(b.x + nx * widths[i + 1] / 2, b.y + ny * widths[i + 1] / 2);
+    ctx.lineTo(b.x - nx * widths[i + 1] / 2, b.y - ny * widths[i + 1] / 2);
+    ctx.lineTo(a.x - nx * widths[i] / 2, a.y - ny * widths[i] / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+// A shaded limb: a darker back edge, the base volume and a soft highlight on the
+// lit side; it tapers from `width` × 1.12 at the root to `width` × `end` at the tip.
+function limb(ctx, pts, width, color, end = 0.78) {
+  const widths = pts.map((_, i) => width * (1.12 + (end - 1.12) * (i / Math.max(1, pts.length - 1))));
+  ctx.fillStyle = css(shade(color, 0.7));
+  taper(ctx, pts, widths);
+  ctx.fillStyle = css(color);
+  taper(ctx, pts.map((p) => ({ x: p.x + width * 0.08, y: p.y - width * 0.05 })), widths.map((w) => w * 0.8));
+  stroke(ctx, pts.map((p) => ({ x: p.x + width * 0.22, y: p.y - width * 0.18 })), width * 0.26, shade(color, 1.28), 0.5);
+}
+// Cloth creases where a sleeve or trouser leg bends.
+function creases(ctx, a, joint, b, width, color) {
+  const bend = Math.abs(Math.atan2(joint.y - a.y, joint.x - a.x) - Math.atan2(b.y - joint.y, b.x - joint.x));
+  const n = bend > 0.35 ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const t = -0.22 + i * 0.16;
+    const c = lerp(joint, t < 0 ? a : b, Math.abs(t));
+    stroke(ctx, [{ x: c.x - width * 0.32, y: c.y - 0.2 }, { x: c.x + width * 0.05, y: c.y + 0.35 }, { x: c.x + width * 0.3, y: c.y }], 0.4, shade(color, 0.6), 0.75);
+  }
 }
 const perp = (axis) => ({ x: -axis.y, y: axis.x });
 function quad(ctx, pts, colorA, colorB, from, to) {
@@ -139,7 +177,10 @@ function drawLeg(ctx, L, o, back) {
   const spec = b && BOTTOMS[b.style];
   if (spec) {
     const c = back ? shade(b.color, 0.8) : b.color;
-    if (spec.reach === 'full') limb(ctx, [L.hip, L.knee, L.ankle], spec.width, c);
+    if (spec.reach === 'full') {
+      limb(ctx, [L.hip, L.knee, L.ankle], spec.width, c, 0.86);
+      creases(ctx, L.hip, L.knee, L.ankle, spec.width, c);
+    }
     else if (spec.reach === 'thigh') limb(ctx, [L.hip, lerp(L.hip, L.knee, 1.08)], spec.width, c);
     else limb(ctx, [L.hip, lerp(L.hip, L.knee, 0.45)], spec.width, c);
     if (spec.seam) stroke(ctx, [L.hip, L.knee, L.ankle], 0.5, shade(c, 1.35), 0.7);
@@ -247,7 +288,10 @@ function drawArm(ctx, A, o, back) {
   if (spec?.sleeve) {
     const c = back ? shade(t.sleeve ?? t.color, 0.78) : t.sleeve ?? t.color;
     if (spec.sleeve === 'short') limb(ctx, [A.shoulder, lerp(A.shoulder, A.elbow, 0.75)], 3.6, c);
-    else limb(ctx, [A.shoulder, A.elbow, lerp(A.elbow, A.hand, 0.85)], spec.sleeve === 'puffy' ? 4.4 : 3.4, c);
+    else {
+      limb(ctx, [A.shoulder, A.elbow, lerp(A.elbow, A.hand, 0.85)], spec.sleeve === 'puffy' ? 4.4 : 3.4, c, 0.85);
+      creases(ctx, A.shoulder, A.elbow, A.hand, 3.4, c);
+    }
   }
   const gloves = o.layers.accessories?.find((a) => a.style === 'gloves');
   ctx.fillStyle = css(gloves ? (back ? shade(gloves.color, 0.8) : gloves.color) : skin);
@@ -277,18 +321,37 @@ function drawHead(ctx, S, o) {
   ctx.beginPath();
   ctx.ellipse(h.x - 0.9, h.y + 0.4, 0.9, 1.3, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = css(0x2b2b2b);
+  // Jaw shadow, cheek warmth, eye (white + iris + glint), brow, mouth.
+  ctx.fillStyle = css(shade(o.skin, 0.72), 0.35);
   ctx.beginPath();
-  ctx.ellipse(h.x + 1.9, h.y - 0.4, 0.55, 0.75, 0, 0, Math.PI * 2);
+  ctx.ellipse(h.x + 0.4, h.y + 3.1, 2.8, 1.1, 0, 0, Math.PI);
   ctx.fill();
-  stroke(ctx, [{ x: h.x + 1.7, y: h.y + 2.4 }, { x: h.x + 2.9, y: h.y + 2.2 }], 0.45, shade(o.skin, 0.62));
+  radialGlow(ctx, h.x + 2.1, h.y + 1.3, 1.3, 0xe07a6a, 0.35);
+  ctx.fillStyle = css(0xf6f2ea);
+  ctx.beginPath();
+  ctx.ellipse(h.x + 2, h.y - 0.4, 0.75, 0.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = css(0x3a2a20);
+  ctx.beginPath();
+  ctx.ellipse(h.x + 2.3, h.y - 0.35, 0.45, 0.58, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = css(0xffffff, 0.9);
+  ctx.fillRect(h.x + 2.35, h.y - 0.75, 0.3, 0.3);
+  stroke(ctx, [{ x: h.x + 1.1, y: h.y - 1.6 }, { x: h.x + 2.9, y: h.y - 1.75 }], 0.55, shade(o.hair, 0.9), 0.9);
+  stroke(ctx, [{ x: h.x + 1.8, y: h.y + 2.35 }, { x: h.x + 2.5, y: h.y + 2.5 }, { x: h.x + 3.0, y: h.y + 2.25 }], 0.45, 0xa0524a, 0.85);
   // Hair: cap over the top and back of the head.
   ctx.fillStyle = css(o.hair);
   ctx.beginPath();
   ctx.ellipse(h.x - 0.5, h.y - 1.8, 3.9, 2.9, -0.15, Math.PI * 0.95, Math.PI * 2.05);
   ctx.ellipse(h.x - 2.2, h.y - 0.2, 1.9, 3.1, 0, 0, Math.PI * 2);
   ctx.fill();
-  stroke(ctx, [{ x: h.x - 2.6, y: h.y - 3.4 }, { x: h.x + 1.5, y: h.y - 4.1 }], 0.6, shade(o.hair, 1.4), 0.6);
+  // Strands and a sheen where the light catches the hair.
+  for (let i = 0; i < 5; i++) {
+    stroke(ctx, [{ x: h.x - 3 + i * 0.4, y: h.y - 2.6 + i * 0.5 }, { x: h.x - 1 + i * 0.9, y: h.y - 4 + i * 0.15 }], 0.3, shade(o.hair, i % 2 ? 0.7 : 1.3), 0.7);
+  }
+  stroke(ctx, [{ x: h.x - 2.6, y: h.y - 3.4 }, { x: h.x + 1.5, y: h.y - 4.1 }], 0.6, shade(o.hair, 1.5), 0.55);
+  // Sideburn / hairline in front of the ear.
+  stroke(ctx, [{ x: h.x - 0.2, y: h.y - 2.2 }, { x: h.x - 0.1, y: h.y }], 0.6, o.hair, 0.9);
 }
 
 const HATS = {

@@ -1,6 +1,6 @@
 import { buildOutfit, buildPoliceLook, HOME_OUTFIT } from './Character.js';
 import {
-  paintTexture, outlineCanvas, css, shade, seeded, radialGlow, roundRect, contactShadow, puffy, pine, vGradient, speckle,
+  paintTexture, outlineCanvas, css, shade, seeded, radialGlow, roundRect, contactShadow, puffy, pine, vGradient, speckle, foliage, trunk, conifer,
 } from './Paint.js';
 
 // Every texture is painted in code (see Paint.js), once, and cached by key.
@@ -487,47 +487,25 @@ export function createCommonTextures(scene) {
 // Trees in four styles (blossom, leafy, autumn, snowy pine), from the palette.
 function paintTree(ctx, p, style) {
   const rnd = seeded(7);
-  contactShadow(ctx, 70, 167, 46, 6, 0.4);
+  contactShadow(ctx, 70, 167, 50, 7, 0.45);
   if (style === 'pine') {
-    pine(ctx, 70, 168, 160, p.blossomDark, { snow: 0xffffff, light: p.blossom });
+    conifer(ctx, 70, 168, 162, p.blossomDark, { snow: 0xffffff, rnd, light: p.blossom });
     return;
   }
-  // Trunk with bark gradient and branches.
-  ctx.beginPath();
-  ctx.moveTo(62, 170);
-  ctx.quadraticCurveTo(66, 130, 66, 82);
-  ctx.lineTo(74, 82);
-  ctx.quadraticCurveTo(75, 130, 79, 170);
-  ctx.closePath();
-  const tg = ctx.createLinearGradient(62, 0, 79, 0);
-  tg.addColorStop(0, css(shade(p.trunk, 1.25)));
-  tg.addColorStop(1, css(shade(p.trunk, 0.65)));
-  ctx.fillStyle = tg;
-  ctx.fill();
-  ctx.strokeStyle = css(p.trunk);
-  ctx.lineCap = 'round';
-  for (const [x1, y1, x2, y2, w] of [[70, 118, 42, 82, 5], [70, 104, 101, 74, 5], [68, 96, 56, 64, 3]]) {
-    ctx.lineWidth = w;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.quadraticCurveTo((x1 + x2) / 2, y1 - 4, x2, y2);
-    ctx.stroke();
-  }
-  const blobs = [[70, 58, 34], [40, 78, 24], [102, 76, 26], [52, 38, 24], [90, 40, 26], [70, 86, 22], [28, 62, 16], [114, 58, 16], [70, 26, 20]];
-  if (style === 'autumn') {
-    const cols = [p.blossom, p.blossomLight, p.blossomDark, shade(p.blossom, 1.1)];
-    for (const [x, y, r] of blobs) {
-      const c = cols[Math.floor(rnd() * cols.length)];
-      puffy(ctx, [[x, y, r]], c, shade(c, 1.35), shade(c, 0.6));
+  // Tapering trunk with bark, forking branches that disappear into the canopy.
+  trunk(ctx, 70, 170, 96, 11, p.trunk, rnd, [[70, 112, 38, 80, 5], [71, 100, 104, 72, 5], [69, 92, 58, 56, 3.5], [72, 90, 86, 48, 3]]);
+  const clusters = [[70, 56, 30], [40, 74, 23], [102, 72, 24], [52, 38, 22], [90, 38, 24], [70, 84, 18], [26, 60, 15], [116, 56, 15], [70, 24, 19]];
+  const colors = style === 'autumn'
+    ? { base: [p.blossom, shade(p.blossom, 1.05), p.blossomLight], light: [p.blossomLight, shade(p.blossomLight, 1.15)], dark: [p.blossomDark, shade(p.blossomDark, 0.85)] }
+    : { base: p.blossom, light: p.blossomLight, dark: p.blossomDark };
+  foliage(ctx, clusters, colors, { rnd, leaf: style === 'blossom' ? 2.6 : 3, density: 0.55 });
+  if (style === 'blossom' || p.treeSpeckle) {
+    // Flowers / sun-caught fruit dotted over the lit side.
+    for (let i = 0; i < 50; i++) {
+      const [cx, cy, r] = clusters[i % clusters.length];
+      const a = Math.PI * (1 + rnd() * 0.9);
+      radialGlow(ctx, cx + Math.cos(a) * r * rnd(), cy + Math.sin(a) * r * rnd(), 1.4, i % 3 ? (p.treeSpeckle ?? 0xffffff) : p.blossomLight, 0.9, 0.6);
     }
-  } else {
-    puffy(ctx, blobs, p.blossom, p.blossomLight, p.blossomDark);
-  }
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = css(i % 3 ? (p.treeSpeckle ?? 0xffffff) : p.blossomLight, 0.75);
-    ctx.beginPath();
-    ctx.arc(20 + rnd() * 100, 16 + rnd() * 84, 0.8 + rnd() * 1.2, 0, Math.PI * 2);
-    ctx.fill();
   }
 }
 
@@ -539,7 +517,7 @@ const HIDE_TEXTURES = {
     height: 62,
     draw(ctx, p) {
       contactShadow(ctx, 50, 60, 48, 5, 0.4);
-      puffy(ctx, [[20, 44, 18], [48, 34, 25], [78, 42, 20], [34, 50, 14], [64, 50, 14]], p.bush, p.bushLight, p.bushDark);
+      foliage(ctx, [[20, 44, 18], [48, 34, 25], [78, 42, 20], [34, 50, 14], [64, 50, 14]], { base: p.bush, light: p.bushLight, dark: p.bushDark }, { rnd: seeded(12), leaf: 2.6, density: 0.6, gaps: false });
       const rnd = seeded(11);
       for (let i = 0; i < 12; i++) radialGlow(ctx, 12 + rnd() * 76, 16 + rnd() * 36, 3.2, p.flowers[i % p.flowers.length], 1, 1.4);
     },
@@ -767,7 +745,7 @@ const HIDE_TEXTURES = {
       ctx.beginPath();
       ctx.ellipse(57, 98, 14, 24, 0, 0, Math.PI * 2);
       ctx.fill();
-      puffy(ctx, [[56, 30, 30], [30, 40, 20], [84, 38, 22], [56, 12, 18]], p.blossom, p.blossomLight, p.blossomDark);
+      foliage(ctx, [[56, 30, 30], [30, 40, 20], [84, 38, 22], [56, 12, 18]], { base: p.blossom, light: p.blossomLight, dark: p.blossomDark }, { rnd: seeded(13), leaf: 2.8, density: 0.55 });
     },
   },
   iceCave: {

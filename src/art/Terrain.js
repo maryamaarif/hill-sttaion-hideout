@@ -17,14 +17,55 @@ const key = (name) => `${name}-${(uid += 1)}`;
 
 // ----- ground -----
 
-function soil(ctx, x, y, w, h, p, rnd) {
-  vGradient(ctx, x, y, w, h, [[0, p.dirt], [0.5, shade(p.dirt, 0.92)], [1, p.dirtDark]]);
-  speckle(ctx, x, y + 14, w, h - 14, [p.dirtDark, shade(p.dirt, 1.15)], w * h / 140, rnd, [0.6, 2], 0.55);
-  for (let i = 0; i < w / 90; i++) rock(ctx, x + rnd() * (w - 16), y + 22 + rnd() * (h - 34), 8 + rnd() * 10, 5 + rnd() * 5, shade(p.rock ?? p.dirtDark, 1.05), rnd);
+// Soil cross-section: dark humus under the turf with roots, lighter subsoil
+// strata below, embedded stones lit from above; deeper = darker.
+export function soil(ctx, x, y, w, h, p, rnd) {
+  vGradient(ctx, x, y, w, h, [[0, shade(p.dirt, 0.78)], [0.12, p.dirt], [0.55, shade(p.dirt, 0.92)], [1, p.dirtDark]]);
+  // Humus band and its uneven lower edge.
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  for (let xx = x + w; xx >= x - 6; xx -= 6) ctx.lineTo(xx, y + 14 + Math.sin(xx * 0.07) * 3 + rnd() * 3);
+  ctx.closePath();
+  ctx.fillStyle = css(shade(p.dirtDark, 0.7), 0.55);
+  ctx.fill();
+  // Faint strata.
+  for (let sy = y + 30; sy < y + h; sy += 16 + rnd() * 14) {
+    ctx.strokeStyle = css(rnd() < 0.5 ? shade(p.dirt, 1.12) : shade(p.dirtDark, 0.85), 0.35);
+    ctx.lineWidth = 1 + rnd() * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, sy);
+    for (let xx = x; xx <= x + w; xx += 14) ctx.lineTo(xx, sy + Math.sin(xx * 0.03 + sy) * 2);
+    ctx.stroke();
+  }
+  // Roots hanging from the turf.
+  ctx.lineCap = 'round';
+  for (let i = 0; i < w / 18; i++) {
+    let rx = x + rnd() * w;
+    let ry = y + 6;
+    ctx.strokeStyle = css(shade(p.dirt, 1.25), 0.5);
+    ctx.lineWidth = 0.6 + rnd() * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry);
+    const len = 6 + rnd() * 16;
+    while (ry < y + 6 + len) {
+      ry += 3;
+      rx += (rnd() - 0.5) * 3;
+      ctx.lineTo(rx, ry);
+    }
+    ctx.stroke();
+  }
+  speckle(ctx, x, y + 14, w, h - 14, [p.dirtDark, shade(p.dirt, 1.15), shade(p.dirtDark, 0.7)], w * h / 110, rnd, [0.5, 1.8], 0.55);
+  for (let i = 0; i < w / 70; i++) {
+    const sx = x + rnd() * (w - 16);
+    const sy = y + 22 + rnd() * (h - 34);
+    contactShadow(ctx, sx + 7, sy + 8, 9, 2, 0.3);
+    rock(ctx, sx, sy, 8 + rnd() * 10, 5 + rnd() * 5, shade(p.rock ?? p.dirtDark, 1.05), rnd);
+  }
 }
 
 // Top edge: grass lip with blades, dry autumn grass with leaves, or a snow cap.
-function groundTop(ctx, x, y, w, p, rnd, { endCaps = true } = {}) {
+export function groundTop(ctx, x, y, w, p, rnd, { endCaps = true } = {}) {
   const style = p.groundStyle ?? 'grass';
   if (style === 'snow') {
     ctx.beginPath();
@@ -54,7 +95,10 @@ function groundTop(ctx, x, y, w, p, rnd, { endCaps = true } = {}) {
   ctx.fillStyle = g;
   ctx.fill();
   const cols = style === 'dry' ? [p.grass, shade(p.grass, 1.2), p.grassDark, 0xd9b45a] : [p.grass, shade(p.grass, 1.25), p.grassDark, shade(p.grass, 0.85)];
+  vGradient(ctx, x, y + 9, w, 8, [[0, 0x140c06, 0.3], [1, 0x140c06, 0]]); // shade under the turf
   grassBlades(ctx, x, x + w, y + 1, { colors: cols, height: style === 'dry' ? 6 : 9, density: 1.5, lean: 2, rnd, width: 1.1 });
+  // A second, taller tuft layer for a less uniform edge.
+  grassBlades(ctx, x, x + w, y + 2, { colors: [shade(cols[0], 0.85), cols[1]], height: style === 'dry' ? 9 : 13, density: 0.35, lean: 3, rnd, width: 1.3 });
   if (style === 'dry' && p.leaves) {
     for (let i = 0; i < w / 14; i++) {
       ctx.fillStyle = css(p.leaves[Math.floor(rnd() * p.leaves.length)], 0.95);
@@ -65,29 +109,81 @@ function groundTop(ctx, x, y, w, p, rnd, { endCaps = true } = {}) {
   }
 }
 
+// Sedimentary rock: strata bands of slightly different tones, each ledge with a
+// sunlit top lip and a shadow beneath; vertical fractures with a lit and a dark
+// side; pitting and pebbles. Lit from the upper left.
 function rockFace(ctx, x, y, w, h, p, rnd) {
-  vGradient(ctx, x, y, w, h, [[0, p.rockLight ?? shade(p.rock, 1.2)], [0.15, p.rock], [1, p.rockDark]]);
-  ctx.strokeStyle = css(p.rockDark, 0.7);
-  for (let sy = y + 16; sy < y + h; sy += 14 + rnd() * 10) {
-    ctx.lineWidth = 1 + rnd();
+  const light = p.rockLight ?? shade(p.rock, 1.2);
+  vGradient(ctx, x, y, w, h, [[0, light], [0.12, p.rock], [1, p.rockDark]]);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  // Strata.
+  let sy = y + 6 + rnd() * 6;
+  while (sy < y + h) {
+    const band = 10 + rnd() * 18;
+    const tone = shade(p.rock, 0.86 + rnd() * 0.26);
     ctx.beginPath();
     ctx.moveTo(x, sy);
-    for (let xx = x; xx <= x + w; xx += 12) ctx.lineTo(xx, sy + (rnd() - 0.5) * 3);
-    ctx.stroke();
-  }
-  speckle(ctx, x, y + 6, w, h - 6, [p.rockDark, p.rockLight ?? 0xffffff], w * h / 120, rnd, [0.5, 1.8], 0.45);
-  for (let i = 0; i < w / 40; i++) {
-    ctx.strokeStyle = css(shade(p.rockDark, 0.8), 0.6);
-    ctx.lineWidth = 0.8;
-    const cx = x + rnd() * w;
+    for (let xx = x; xx <= x + w + 8; xx += 8) ctx.lineTo(xx, sy + Math.sin(xx * 0.05 + sy) * 1.5 + (rnd() - 0.5) * 1.5);
+    ctx.lineTo(x + w + 8, sy + band);
+    ctx.lineTo(x, sy + band);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, sy, 0, sy + band);
+    g.addColorStop(0, css(shade(tone, 1.12), 0.85));
+    g.addColorStop(0.7, css(tone, 0.7));
+    g.addColorStop(1, css(shade(tone, 0.72), 0.85));
+    ctx.fillStyle = g;
+    ctx.fill();
+    // Shadow under the ledge above, lit lip on top.
+    vGradient(ctx, x, sy, w, 4, [[0, 0x1a1208, 0.28], [1, 0x1a1208, 0]]);
+    ctx.strokeStyle = css(0xffffff, 0.22);
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(cx, y + 6);
-    ctx.lineTo(cx + (rnd() - 0.5) * 8, y + 14 + rnd() * 20);
+    ctx.moveTo(x, sy - 0.5);
+    ctx.lineTo(x + w, sy - 0.5);
     ctx.stroke();
+    sy += band;
   }
-  vGradient(ctx, x, y, w, 5, [[0, 0xffffff, 0.35], [1, 0xffffff, 0]]);
-  vGradient(ctx, x, y, 3, h, [[0, 0x000000, 0.15], [1, 0x000000, 0.25]]);
-  vGradient(ctx, x + w - 3, y, 3, h, [[0, 0x000000, 0.15], [1, 0x000000, 0.25]]);
+  // Vertical fractures: a dark crack with a lit edge on its left.
+  for (let i = 0; i < w / 34; i++) {
+    let cx = x + 6 + rnd() * (w - 12);
+    let cy = y + 4 + rnd() * h * 0.3;
+    const len = 14 + rnd() * h * 0.5;
+    ctx.lineCap = 'round';
+    for (const [dx, col, a, lw] of [[-1, 0xffffff, 0.25, 1], [0, shade(p.rockDark, 0.6), 0.75, 1.3]]) {
+      let px = cx + dx;
+      let py = cy;
+      const r2 = seeded(Math.floor(cx * 7 + cy));
+      ctx.strokeStyle = css(col, a);
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      while (py < cy + len) {
+        py += 4 + r2() * 5;
+        px += (r2() - 0.5) * 4;
+        ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
+  // Pitting and pebbles.
+  speckle(ctx, x, y + 6, w, h - 6, [p.rockDark, shade(p.rockDark, 0.8), light], w * h / 90, rnd, [0.4, 1.6], 0.5);
+  for (let i = 0; i < w / 60; i++) rock(ctx, x + rnd() * (w - 10), y + h * (0.3 + rnd() * 0.6), 5 + rnd() * 6, 3 + rnd() * 3, shade(p.rock, 0.95 + rnd() * 0.2), rnd);
+  ctx.restore();
+  // Sunlit top edge and rounded side shading.
+  vGradient(ctx, x, y, w, 6, [[0, 0xffffff, 0.4], [1, 0xffffff, 0]]);
+  const sideL = ctx.createLinearGradient(x, 0, x + 10, 0);
+  sideL.addColorStop(0, css(0xffffff, 0.18));
+  sideL.addColorStop(1, css(0xffffff, 0));
+  ctx.fillStyle = sideL;
+  ctx.fillRect(x, y, 10, h);
+  const sideR = ctx.createLinearGradient(x + w - 14, 0, x + w, 0);
+  sideR.addColorStop(0, css(0x000000, 0));
+  sideR.addColorStop(1, css(0x000000, 0.3));
+  ctx.fillStyle = sideR;
+  ctx.fillRect(x + w - 14, y, 14, h);
 }
 
 function paintGround(ctx, seg, p, H, gy) {

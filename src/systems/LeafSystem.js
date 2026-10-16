@@ -2,6 +2,7 @@ import { DEPTH } from '../config/game.js';
 import { seededRandom } from '../art/TextureFactory.js';
 import { paintTexture, trackForCleanup, addArt, css, shade, vGradient, contactShadow } from '../art/Paint.js';
 import HidingSpot from '../entities/HidingSpot.js';
+import { soil, groundTop } from '../art/Terrain.js';
 
 // Leaf piles (layout.leafPiles) that all look alike:
 //   'pit'   covers a gap in the ground (hole = gap width, default w - 26):
@@ -48,18 +49,14 @@ export default class LeafSystem {
     const { x, w, kind } = def;
     const h = kind === 'hide' ? 44 : 26;
     const rnd = seededRandom(x);
-    // Painted once: a mound of shaded leaves (and for a pit, a fake lid of ground).
-    const depth = kind === 'pit' ? this.scene.scale.height - groundY : 6;
+    // Painted once: a mound of shaded leaves (and for a pit, a fake lid of ground,
+    // painted separately without an ink outline so its edges don't show).
+    const depth = 6;
     const hole = def.hole ?? w - 26;
     const top = h + 10;
     const key = `leafpile-${kind}-${x}-${Math.random().toString(36).slice(2, 6)}`;
     paintTexture(this.scene, key, w + 24, top + depth, (ctx) => {
       ctx.translate(w / 2 + 12, top);
-      if (kind === 'pit') {
-        const lid = { ...p, groundStyle: 'dry' };
-        vGradient(ctx, -hole / 2 - 4, 4, hole + 8, depth - 4, [[0, lid.dirt], [1, lid.dirtDark]]);
-        vGradient(ctx, -hole / 2 - 4, -2, hole + 8, 10, [[0, shade(lid.grass, 1.1)], [1, lid.grassDark]]);
-      }
       contactShadow(ctx, 0, 2, w * 0.55, 5, 0.35);
       for (let i = 0; i < w * 1.1; i++) {
         const t = rnd();
@@ -89,9 +86,21 @@ export default class LeafSystem {
       }
     }, { outline: 2 });
     trackForCleanup(this.scene, key);
-    const g = addArt(this.scene, x, groundY + 2, key)
-      .setOrigin((w / 2 + 12) / (w + 24), top / (top + depth))
-      .setDepth(DEPTH.foreground);
+    const leaves = addArt(this.scene, 0, 0, key).setOrigin((w / 2 + 12) / (w + 24), top / (top + depth));
+    const g = this.scene.add.container(x, groundY + 2).setDepth(DEPTH.foreground);
+    if (kind === 'pit') {
+      // Painted exactly like the real ground (same soil and turf painters).
+      const lw = hole + 8;
+      const lidDepth = this.scene.scale.height - groundY;
+      const lidKey = `${key}-lid`;
+      paintTexture(this.scene, lidKey, lw, lidDepth + 4, (ctx) => {
+        soil(ctx, 0, 6, lw, lidDepth - 2, p, seededRandom(x + 3));
+        groundTop(ctx, 0, 2, lw, p, seededRandom(x + 4), { endCaps: false });
+      });
+      trackForCleanup(this.scene, lidKey);
+      g.add(addArt(this.scene, -lw / 2, -4, lidKey).setOrigin(0));
+    }
+    g.add(leaves);
 
     let spot = null;
     if (kind === 'hide') {

@@ -1,6 +1,6 @@
 import { DEPTH } from '../config/game.js';
 import {
-  paintTexture, paintChunks, trackForCleanup, css, shade, mix, seeded, radialGlow, vGradient, puffy, pine, roundRect, speckle, grassBlades,
+  paintTexture, paintChunks, trackForCleanup, css, shade, mix, seeded, radialGlow, vGradient, puffy, pine, roundRect, speckle, grassBlades, foliage, trunk, conifer, cumulus,
 } from './Paint.js';
 
 // Painted parallax backdrop, the same five layers in every season (only the
@@ -71,9 +71,9 @@ function paintSky(scene, p, key) {
       const s = 0.7 + rnd() * 0.6;
       if (Math.hypot(cx + 26 * s - sx, cy - sy) < r + 70 * s) continue; // keep the sun clear
       ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.filter = 'blur(1.5px)';
-      puffy(ctx, [[cx, cy, 20 * s], [cx + 26 * s, cy - 8 * s, 24 * s], [cx + 52 * s, cy, 18 * s], [cx + 22 * s, cy + 8 * s, 18 * s]], p.cloud, 0xffffff, mix(p.cloud, p.skyTop, 0.35));
+      ctx.globalAlpha = 0.9;
+      ctx.filter = 'blur(0.6px)';
+      cumulus(ctx, cx - 10 * s, cy + 14 * s, 96 * s, { light: mix(0xffffff, p.cloud, 0.3), shadow: mix(p.cloud, p.skyTop, 0.45), rnd });
       ctx.restore();
     }
   }, { scale: 1 });
@@ -245,10 +245,17 @@ function bench(ctx, x, ground, wood) {
 }
 
 function roundTree(ctx, x, ground, size, p, style, rnd) {
-  ctx.fillStyle = css(shade(p.trunk, 0.9));
-  ctx.fillRect(x - size * 0.06, ground - size * 0.7, size * 0.12, size * 0.7);
-  const leaves = style === 'autumn' ? [p.blossom, p.blossomLight, p.blossomDark][Math.floor(rnd() * 3)] : p.nearTree;
-  puffy(ctx, [[x, ground - size * 0.9, size * 0.42], [x - size * 0.3, ground - size * 0.72, size * 0.3], [x + size * 0.3, ground - size * 0.74, size * 0.32]], leaves, shade(leaves, 1.3), shade(leaves, 0.7));
+  const leaves = style === 'autumn'
+    ? { base: [p.blossom, p.nearTree], light: [p.blossomLight, shade(p.nearTree, 1.3)], dark: [p.blossomDark, shade(p.nearTree, 0.6)] }
+    : { base: p.nearTree, light: shade(p.nearTree, 1.3), dark: shade(p.nearTree, 0.6) };
+  trunk(ctx, x, ground, size * 0.62, size * 0.07, shade(p.trunk, 0.9), rnd);
+  const r = size * 0.42;
+  foliage(ctx, [
+    [x, ground - size * 0.9, r],
+    [x - size * 0.3, ground - size * 0.7, r * 0.72],
+    [x + size * 0.3, ground - size * 0.72, r * 0.76],
+    [x + size * 0.05, ground - size * 1.15, r * 0.6],
+  ], leaves, { rnd, leaf: Math.max(1.6, size / 26), density: 0.42 });
 }
 
 // ----- foreground props (pass in front of the player) -----
@@ -296,6 +303,9 @@ export function buildBackdrop(scene, season, worldWidth) {
   add(paintChunks(scene, `mtn-${k}`, 0, band(0.35), wM, H - band(0.35), (ctx) => {
     const shape = { base: H * 0.5, amp: 70, seed: 2, freq: 1.6 };
     const col = mix(p.mountain ?? 0x8a9bb0, haze, 0.35);
+    // A farther range first, paler with distance (atmospheric perspective).
+    const backShape = { base: H * 0.47, amp: 50, seed: 7, freq: 1.1 };
+    fillRidge(ctx, 0, wM, H, backShape, mix(col, haze, 0.55), mix(col, haze, 0.4));
     fillRidge(ctx, 0, wM, H, shape, col, shade(col, 1.1));
     ctx.save();
     ctx.beginPath();
@@ -318,6 +328,43 @@ export function buildBackdrop(scene, season, worldWidth) {
     sg.addColorStop(1, css(p.mountainSnow ?? 0xf4f8fb, 0.55));
     ctx.fillStyle = sg;
     ctx.fill();
+    // Rock faces: slopes turned to the sun (left) catch light, the others fall into
+    // shadow; gullies streak down from the ridge.
+    const rnd = seeded(23);
+    // Smoothed slope (wide window) so the faces read as broad planes, not stripes.
+    const litAt = (x) => Math.max(-1, Math.min(1, -((ridge(x + 24, shape) - ridge(x - 24, shape)) / 48) * 2.4));
+    for (const tone of [0xffffff, 0x1c2433]) {
+      ctx.beginPath();
+      ctx.moveTo(0, ridge(0, shape));
+      for (let x = 0; x <= wM + 8; x += 4) ctx.lineTo(x, ridge(x, shape));
+      for (let x = wM + 8; x >= 0; x -= 4) ctx.lineTo(x, ridge(x, shape) + 90);
+      ctx.closePath();
+      ctx.save();
+      ctx.clip();
+      const g = ctx.createLinearGradient(0, 0, wM, 0);
+      for (let x = 0; x <= wM; x += 16) {
+        const l = litAt(x);
+        const a = tone === 0xffffff ? Math.max(0, l) * 0.3 : Math.max(0, -l) * 0.32;
+        g.addColorStop(x / wM, css(tone, a));
+      }
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, wM, H);
+      ctx.restore();
+    }
+    // Fade the face shading out towards the foothills.
+    vGradient(ctx, 0, H * 0.42, wM, H * 0.2, [[0, col, 0], [1, col, 0.6]]);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < wM / 22; i++) {
+      const x = rnd() * wM;
+      const y = ridge(x, shape) + 4;
+      const len = 20 + rnd() * 50;
+      ctx.strokeStyle = css(0x1c2433, 0.12 + rnd() * 0.1);
+      ctx.lineWidth = 1 + rnd() * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + (rnd() - 0.5) * 10, y + len * 0.5, x + (rnd() - 0.5) * 18, y + len);
+      ctx.stroke();
+    }
     ctx.restore();
     vGradient(ctx, 0, H * 0.35, wM, H * 0.65, [[0, haze, 0], [0.6, haze, 0.75], [1, haze, 1]]);
   }), F.mountains, DEPTH.far - 6);
@@ -344,7 +391,7 @@ export function buildBackdrop(scene, season, worldWidth) {
     for (let x = 30; x < wH; x += 60 + rnd() * 80) {
       if (Math.abs(x - 620) < 120) continue;
       const g = ridge(x, hillShape) + 4;
-      if (p.treeStyle === 'pine') pine(ctx, x, g, 34 + rnd() * 16, mix(p.midTree, haze, 0.1), { snow: 0xffffff });
+      if (p.treeStyle === 'pine') conifer(ctx, x, g, 34 + rnd() * 16, mix(p.midTree, haze, 0.1), { snow: 0xffffff, rnd });
       else roundTree(ctx, x, g, 30 + rnd() * 12, { ...p, nearTree: mix(p.midTree, haze, 0.1) }, p.treeStyle, rnd);
     }
     guestHouse(ctx, 620, houseGround + 4, p, 0.8, seeded(9));
@@ -407,7 +454,7 @@ export function buildBackdrop(scene, season, worldWidth) {
     for (let x = 40; x < wN; x += 150 + rnd() * 180) {
       const g = ridge(x, shape) + 6;
       const roll = rnd();
-      if (p.treeStyle === 'pine') pine(ctx, x, g, 70 + rnd() * 30, p.nearTree, { snow: 0xffffff, light: shade(p.nearTree, 1.3) });
+      if (p.treeStyle === 'pine') conifer(ctx, x, g, 70 + rnd() * 30, p.nearTree, { snow: 0xffffff, rnd, light: shade(p.nearTree, 1.3) });
       else roundTree(ctx, x, g, 56 + rnd() * 22, p, p.treeStyle, rnd);
       if (roll < 0.3) fence(ctx, x + 30, x + 110, ridge(x + 70, shape) + 4, p.wood ?? 0xb07a48);
       else if (roll < 0.5) bench(ctx, x + 40, ridge(x + 50, shape) + 4, p.wood ?? 0xb07a48);
