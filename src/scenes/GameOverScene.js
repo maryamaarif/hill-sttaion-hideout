@@ -1,4 +1,13 @@
-import { addScreenText, onKey } from './ui.js';
+import { createMenu } from './ui.js';
+import { textStyle, createHearts } from '../ui/Hud.js';
+import { newLevelRun } from '../systems/RunState.js';
+import { UI } from '../config/game.js';
+
+const MESSAGES = {
+  caught: 'A plain-clothes officer recognised you.',
+  water: 'You ended up in the water once too often.',
+  fell: 'You took one tumble too many.',
+};
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -6,7 +15,21 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create(data) {
-    addScreenText(this, 'Caught!', ['The police found you.', '', 'Press ENTER to try again']);
-    onKey(this, 'ENTER', () => this.scene.start('MenuScene', { level: data.level }));
+    const { width: W, height: H } = this.scale;
+    this.cameras.main.setBackgroundColor('#2a2238');
+    this.cameras.main.fadeIn(400);
+
+    this.add.text(W / 2, H / 2 - 120, 'Out of lives', textStyle(48)).setOrigin(0.5);
+    this.add
+      .text(W / 2, H / 2 - 66, MESSAGES[data.reason] ?? MESSAGES.caught, textStyle(20, { color: '#e8dcff' }))
+      .setOrigin(0.5);
+    const hearts = createHearts(this, 0, H / 2 - 30, 0);
+    const rowWidth = hearts.length * (UI.heartSize + 4) - 4;
+    hearts.forEach((h) => h.setX(h.x + W / 2 - rowWidth / 2));
+
+    createMenu(this, W / 2, H / 2 + 50, [
+      { label: 'Try again', action: () => this.scene.start('GameScene', newLevelRun(data.level, this.time.now)) },
+      { label: 'Main menu', action: () => this.scene.start('MenuScene', { level: data.level }) },
+    ]);
   }
 }

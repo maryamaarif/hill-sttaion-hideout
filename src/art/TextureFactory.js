@@ -116,11 +116,13 @@ function drawPlayer(g, pose) {
   g.fillStyle(C.hatBand).fillRect(10, 7 + dy, 13, 2);
 }
 
-function drawHeart(g, color) {
+// Heart in a 22×20 frame, optionally shrunk toward its centre (for inner fills).
+function drawHeart(g, color, scale = 1) {
+  const p = (x, y) => [11 + (x - 11) * scale, 10 + (y - 10) * scale];
   g.fillStyle(color);
-  g.fillCircle(6, 7, 5.5);
-  g.fillCircle(16, 7, 5.5);
-  g.fillTriangle(1, 9, 21, 9, 11, 19);
+  g.fillCircle(...p(6, 7), 5.5 * scale);
+  g.fillCircle(...p(16, 7), 5.5 * scale);
+  g.fillTriangle(...p(1, 9), ...p(21, 9), ...p(11, 19));
 }
 
 // Small seeded random so procedural art is identical every run.
@@ -142,7 +144,11 @@ export function createCommonTextures(scene) {
   }
 
   makeTexture(scene, 'heart-full', 22, 20, (g) => drawHeart(g, 0xe84a5f));
-  makeTexture(scene, 'heart-empty', 22, 20, (g) => drawHeart(g, 0x000000));
+  // Empty slot: dark outline, pale fill. Readable on light skies and dark menus.
+  makeTexture(scene, 'heart-empty', 22, 20, (g) => {
+    drawHeart(g, 0x3b2a20);
+    drawHeart(g, 0xe9dfe6, 0.72);
+  });
 
   makeTexture(scene, 'petal', 9, 6, (g) => {
     g.fillStyle(0xf8b8d0).fillEllipse(4.5, 3, 9, 5);
@@ -150,6 +156,57 @@ export function createCommonTextures(scene) {
   });
   makeTexture(scene, 'droplet', 6, 6, (g) => {
     g.fillStyle(0xd8f3ff).fillCircle(3, 3, 3);
+  });
+
+  // HUD icons: one per season, plus a coin. All 28×28 except the coin.
+  makeTexture(scene, 'icon-spring', 28, 28, (g) => {
+    g.fillStyle(0xd76b93);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      g.fillCircle(14 + Math.cos(a) * 7, 14 + Math.sin(a) * 7, 6.5);
+    }
+    g.fillStyle(0xf8b8d0);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      g.fillCircle(14 + Math.cos(a) * 7, 14 + Math.sin(a) * 7, 5);
+    }
+    g.fillStyle(0xffd84a).fillCircle(14, 14, 3.5);
+  });
+  makeTexture(scene, 'icon-summer', 28, 28, (g) => {
+    g.lineStyle(3, 0xf2a417);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      g.lineBetween(14 + Math.cos(a) * 9, 14 + Math.sin(a) * 9, 14 + Math.cos(a) * 13, 14 + Math.sin(a) * 13);
+    }
+    g.fillStyle(0xf2a417).fillCircle(14, 14, 8);
+    g.fillStyle(0xffd84a).fillCircle(14, 14, 6.5);
+  });
+  makeTexture(scene, 'icon-fall', 28, 28, (g) => {
+    g.fillStyle(0xa8401a).fillPoints([{ x: 14, y: 1 }, { x: 26, y: 13 }, { x: 14, y: 25 }, { x: 2, y: 13 }], true);
+    g.fillStyle(0xe0632a).fillPoints([{ x: 14, y: 3 }, { x: 24, y: 13 }, { x: 14, y: 23 }, { x: 4, y: 13 }], true);
+    g.lineStyle(2, 0x7a2e12).lineBetween(14, 6, 14, 27);
+    g.lineBetween(14, 13, 9, 9);
+    g.lineBetween(14, 13, 19, 9);
+  });
+  makeTexture(scene, 'icon-winter', 28, 28, (g) => {
+    const arms = (width, color) => {
+      g.lineStyle(width, color);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI;
+        const dx = Math.cos(a) * 11;
+        const dy = Math.sin(a) * 11;
+        g.lineBetween(14 - dx, 14 - dy, 14 + dx, 14 + dy);
+      }
+    };
+    arms(5, 0x3f6c9e);
+    arms(2.5, 0xffffff);
+    g.fillStyle(0xffffff).fillCircle(14, 14, 2.5);
+  });
+  makeTexture(scene, 'coin', 22, 22, (g) => {
+    g.fillStyle(0xb7811c).fillCircle(11, 11, 10);
+    g.fillStyle(0xf5c542).fillCircle(11, 11, 8);
+    g.fillStyle(0xffe58a).fillCircle(8.5, 8, 3);
+    g.fillStyle(0xb7811c).fillRect(10, 6, 2, 10);
   });
 
   if (!scene.anims.exists('player-walk')) {

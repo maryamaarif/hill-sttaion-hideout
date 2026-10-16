@@ -1,6 +1,8 @@
 import { DEPTH, LIVES, UI } from '../config/game.js';
 
-const textStyle = (size, extra = {}) => ({
+const HEART_GAP = 4;
+
+export const textStyle = (size, extra = {}) => ({
   fontFamily: UI.font,
   fontSize: `${size}px`,
   color: UI.textColor,
@@ -10,53 +12,135 @@ const textStyle = (size, extra = {}) => ({
   ...extra,
 });
 
-// On-screen HUD fixed to the camera: lives, season + hurdle progress, banners.
+// Draws a row of hearts (full, half, empty) with top-left at (x, y).
+// Shows at least LIVES.start slots so lost lives read as empty hearts.
+export function createHearts(scene, x, y, lives) {
+  const objects = [];
+  const size = UI.heartSize;
+  const slots = Math.max(LIVES.start, Math.ceil(lives));
+  for (let i = 0; i < slots; i++) {
+    const hx = x + i * (size + HEART_GAP);
+    objects.push(scene.add.image(hx, y, 'heart-empty').setOrigin(0).setAlpha(0.75));
+    const fill = Math.min(1, Math.max(0, lives - i));
+    if (fill > 0) {
+      const heart = scene.add.image(hx, y, 'heart-full').setOrigin(0);
+      if (fill < 1) heart.setCrop(0, 0, heart.width * fill, heart.height);
+      objects.push(heart);
+    }
+  }
+  return objects;
+}
+
+// On-screen HUD fixed to the camera.
+//   left:   hearts (+ HIDDEN indicator)
+//   centre: season icon + name, hurdle dots ●●○, hurdle name
+//   right:  coins
 export default class Hud {
-  constructor(scene, seasonName, hurdles) {
+  constructor(scene, season, hurdles, coins) {
     this.scene = scene;
     this.hurdles = hurdles;
     const W = scene.scale.width;
     const fixed = (obj) => obj.setScrollFactor(0).setDepth(DEPTH.hud);
+    this.fixed = fixed;
 
+    this.heartsX = 16;
+    this.heartsY = 14;
     this.hearts = [];
-    this.hiddenText = fixed(scene.add.text(18, 44, 'HIDDEN', textStyle(16, { color: '#c8f7c5' })));
-    this.hiddenText.setVisible(false);
+    this.hiddenText = fixed(scene.add.text(16, 42, 'HIDDEN', textStyle(16, { color: '#c8f7c5' }))).setVisible(false);
 
-    this.seasonText = fixed(scene.add.text(W / 2, 12, seasonName, textStyle(24)).setOrigin(0.5, 0));
-    this.hurdleText = fixed(scene.add.text(W / 2, 44, '', textStyle(16)).setOrigin(0.5, 0));
+    this.seasonIcon = fixed(scene.add.image(0, 26, `icon-${season.key}`));
+    this.seasonText = fixed(scene.add.text(0, 26, season.name, textStyle(24)).setOrigin(0, 0.5));
+    const total = this.seasonIcon.width + 8 + this.seasonText.width;
+    this.seasonIcon.setX(W / 2 - total / 2 + this.seasonIcon.width / 2);
+    this.seasonText.setX(W / 2 - total / 2 + this.seasonIcon.width + 8);
 
     this.dots = fixed(scene.add.graphics());
     this.cleared = 0;
+    this.active = -1;
+    this.hurdleText = fixed(scene.add.text(W / 2, 66, '', textStyle(15)).setOrigin(0.5, 0));
     this.drawDots();
+
+    this.coinText = fixed(scene.add.text(W - 16, 26, '', textStyle(22)).setOrigin(1, 0.5));
+    this.coinIcon = fixed(scene.add.image(0, 26, 'coin'));
+    this.setCoins(coins);
 
     this.bannerTitle = fixed(scene.add.text(W / 2, 150, '', textStyle(38)).setOrigin(0.5).setAlpha(0));
     this.bannerSub = fixed(scene.add.text(W / 2, 194, '', textStyle(20)).setOrigin(0.5).setAlpha(0));
   }
 
+  // ----- lives -----
+
   setLives(lives) {
     this.hearts.forEach((h) => h.destroy());
-    this.hearts = [];
-    const slots = Math.max(LIVES.start, Math.ceil(lives));
-    for (let i = 0; i < slots; i++) {
-      const x = 18 + i * (UI.heartSize + 4);
-      const empty = this.scene.add.image(x, 14, 'heart-empty').setOrigin(0).setAlpha(0.3);
-      this.hearts.push(empty.setScrollFactor(0).setDepth(DEPTH.hud));
-      const fill = Math.min(1, Math.max(0, lives - i));
-      if (fill > 0) {
-        const heart = this.scene.add.image(x, 14, 'heart-full').setOrigin(0);
-        if (fill < 1) heart.setCrop(0, 0, heart.width * fill, heart.height);
-        this.hearts.push(heart.setScrollFactor(0).setDepth(DEPTH.hud));
-      }
-    }
+    this.hearts = createHearts(this.scene, this.heartsX, this.heartsY, lives).map(this.fixed);
   }
 
+  heartCenter(index) {
+    const size = UI.heartSize;
+    return { x: this.heartsX + index * (size + HEART_GAP) + size / 2, y: this.heartsY + 10 };
+  }
+
+  // A half heart flies from a world position up into the heart slot it fills.
+  flyHalfHeart(worldX, worldY, lives, onArrive) {
+    const cam = this.scene.cameras.main;
+    const target = this.heartCenter(Math.ceil(lives) - 1);
+    const heart = this.fixed(this.scene.add.image(worldX - cam.scrollX, worldY - cam.scrollY, 'heart-full'));
+    // Landing on a whole number fills a heart's right half; otherwise its left half.
+    const rightHalf = Number.isInteger(lives);
+    heart.setDepth(DEPTH.hud + 2).setScale(1.8);
+    heart.setCrop(rightHalf ? heart.width / 2 : 0, 0, heart.width / 2, heart.height);
+    this.scene.tweens.add({ targets: heart, x: target.x, duration: 750, ease: 'Sine.inOut' });
+    this.scene.tweens.add({ targets: heart, y: target.y, duration: 750, ease: 'Back.in' });
+    this.scene.tweens.add({
+      targets: heart,
+      scale: 1,
+      duration: 750,
+      onComplete: () => {
+        heart.destroy();
+        onArrive?.();
+        this.pulseHeart(Math.ceil(lives) - 1);
+      },
+    });
+  }
+
+  pulseHeart(index) {
+    const { x, y } = this.heartCenter(index);
+    const ring = this.fixed(this.scene.add.circle(x, y, 10, 0xfff1a8, 0.9)).setDepth(DEPTH.hud - 1);
+    this.scene.tweens.add({ targets: ring, scale: 2.4, alpha: 0, duration: 450, onComplete: () => ring.destroy() });
+  }
+
+  // The heart that was lost drops and fades out, then the row redraws.
+  breakHeart(before, after) {
+    const index = Math.max(0, Math.ceil(before) - 1);
+    const { x, y } = this.heartCenter(index);
+    const piece = this.fixed(this.scene.add.image(x, y, 'heart-full')).setDepth(DEPTH.hud + 2);
+    const fill = before - Math.floor(before) || 1;
+    if (fill < 1) piece.setCrop(0, 0, piece.width * fill, piece.height);
+    this.setLives(after);
+    this.scene.tweens.add({
+      targets: piece,
+      y: y + 40,
+      angle: 35,
+      alpha: 0,
+      scale: 1.4,
+      duration: 600,
+      ease: 'Quad.in',
+      onComplete: () => piece.destroy(),
+    });
+  }
+
+  // ----- hurdles -----
+
   setHurdle(index) {
-    const h = this.hurdles[index];
-    this.hurdleText.setText(`Hurdle ${index + 1}/${this.hurdles.length}: ${h.name}`);
+    this.active = index;
+    this.hurdleText.setText(this.hurdles[index].name);
+    this.drawDots();
   }
 
   setBetweenHurdles(text) {
+    this.active = -1;
     this.hurdleText.setText(text);
+    this.drawDots();
   }
 
   markCleared(count) {
@@ -64,16 +148,31 @@ export default class Hud {
     this.drawDots();
   }
 
+  // ● cleared (gold), ◉ current (white ring), ○ upcoming (faint).
   drawDots() {
     const W = this.scene.scale.width;
     const n = this.hurdles.length;
+    const gap = 24;
     this.dots.clear();
     for (let i = 0; i < n; i++) {
-      const x = W - 24 - (n - 1 - i) * 26;
-      this.dots.lineStyle(3, 0x3b2a20).strokeCircle(x, 26, 9);
-      this.dots.fillStyle(i < this.cleared ? 0xffd54f : 0xffffff, i < this.cleared ? 1 : 0.35).fillCircle(x, 26, 8);
+      const x = W / 2 + (i - (n - 1) / 2) * gap;
+      const y = 54;
+      const done = i < this.cleared;
+      const current = i === this.active;
+      this.dots.lineStyle(3, 0x3b2a20).strokeCircle(x, y, 8);
+      this.dots.fillStyle(done ? 0xffd54f : 0xffffff, done ? 1 : current ? 0.95 : 0.35).fillCircle(x, y, 7);
+      if (current) this.dots.fillStyle(0xffd54f).fillCircle(x, y, 3);
     }
   }
+
+  // ----- coins -----
+
+  setCoins(coins) {
+    this.coinText.setText(String(coins));
+    this.coinIcon.setX(this.coinText.x - this.coinText.width - 16);
+  }
+
+  // ----- misc -----
 
   setHidden(hidden) {
     this.hiddenText.setVisible(hidden);

@@ -1,5 +1,5 @@
 import { addScreenText, onKey } from './ui.js';
-import { LIVES } from '../config/game.js';
+import { newLevelRun } from '../systems/RunState.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -15,12 +15,7 @@ export default class MenuScene extends Phaser.Scene {
       'Press ENTER to start',
     ]);
     onKey(this, 'ENTER', () => {
-      this.scene.start('GameScene', {
-        level,
-        seasonIndex: 0,
-        lives: LIVES.start,
-        startTime: this.time.now,
-      });
+      this.scene.start('GameScene', newLevelRun(level, this.time.now));
     });
   }
 }

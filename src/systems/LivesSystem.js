@@ -1,19 +1,31 @@
 import { LIVES, COINS } from '../config/game.js';
 
-// Tracks lives in half-life steps and converts them to coins at level end.
+const STEP = 0.5;
+
+// Lives as a number in half-life steps (3, 2.5, 4 …). Never below 0.
+// Also converts lives to coins at the end of a level.
 export default class LivesSystem {
   constructor(lives = LIVES.start) {
-    this.lives = lives;
+    this.lives = LivesSystem.snap(lives);
+  }
+
+  static snap(value) {
+    return Math.max(0, Math.round(value / STEP) * STEP);
+  }
+
+  // Each change returns { before, after } so callers can animate the difference.
+  change(amount) {
+    const before = this.lives;
+    this.lives = LivesSystem.snap(before + amount);
+    return { before, after: this.lives };
   }
 
   loseLife(amount = LIVES.lossOnCaught) {
-    this.lives = Math.max(0, this.lives - amount);
-    return this.lives;
+    return this.change(-amount);
   }
 
   hurdleCleared() {
-    this.lives += LIVES.gainPerHurdle;
-    return this.lives;
+    return this.change(LIVES.gainPerHurdle);
   }
 
   isGameOver() {
@@ -22,7 +34,7 @@ export default class LivesSystem {
 
   static livesToCoins(lives) {
     const full = Math.floor(lives);
-    const half = lives - full >= 0.5 ? 1 : 0;
+    const half = lives - full >= STEP ? 1 : 0;
     return full * COINS.perLife + half * COINS.perHalfLife;
   }
 

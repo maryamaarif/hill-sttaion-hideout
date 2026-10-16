@@ -6,6 +6,8 @@ import buildLevel from '../systems/LevelBuilder.js';
 import HurdleSystem from '../systems/HurdleSystem.js';
 import LivesSystem from '../systems/LivesSystem.js';
 import DifficultySystem from '../systems/DifficultySystem.js';
+import AudioSystem from '../systems/AudioSystem.js';
+import SaveSystem from '../systems/SaveSystem.js';
 import Player from '../entities/Player.js';
 import Police from '../entities/Police.js';
 import Hud from '../ui/Hud.js';
@@ -30,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     this.state = 'playing';
     this.lives = new LivesSystem(data.lives);
+    this.audio = new AudioSystem(this);
 
     this.physics.world.gravity.y = physics.gravity;
     this.physics.world.setBounds(0, 0, layout.width, H);
@@ -42,7 +45,7 @@ export default class GameScene extends Phaser.Scene {
     this.player = new Player(this, layout.spawn.x, layout.spawn.y, physics);
     this.physics.add.collider(this.player, this.level.solids);
     this.physics.add.overlap(this.player, this.level.hazards, () =>
-      this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, message: '−1 life' }),
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, sound: 'splash', message: '−1 life', reason: 'water' }),
     );
     this.physics.add.overlap(this.player, this.level.goalZone, () => this.reachGoal());
 
@@ -54,7 +57,7 @@ export default class GameScene extends Phaser.Scene {
       (route) => new Police(this, route, policeSettings, layout.groundY, this.season.visibility ?? 1),
     );
 
-    this.hud = new Hud(this, this.season.name, this.level.hurdles);
+    this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
     this.hud.setLives(this.lives.lives);
     this.hud.setBetweenHurdles(this.season.tagline);
 
@@ -107,9 +110,9 @@ export default class GameScene extends Phaser.Scene {
     this.hud.setHidden(this.player.hidden);
 
     if (catcher) {
-      this.loseLife({ amount: LIVES.lossOnCaught, message: 'Caught!', banner: 'Spotted!' });
+      this.loseLife({ amount: LIVES.lossOnCaught, sound: 'caught', message: 'Caught!', banner: 'Spotted!', reason: 'caught' });
     } else if (this.player.y > this.scale.height + RESPAWN.killMarginY) {
-      this.loseLife({ amount: LIVES.lossOnHurdleFail, message: '−1 life' });
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'hit', message: '−1 life', reason: 'fell' });
     }
   }
 
@@ -119,8 +122,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   clearHurdle(i, hurdle) {
-    this.lives.hurdleCleared();
-    this.hud.setLives(this.lives.lives);
+    // Reward: chime, and a half heart flies from the player into the HUD.
+    const { after } = this.lives.hurdleCleared();
+    this.audio.play('chime');
+    this.hud.flyHalfHeart(this.player.x, this.player.y - 30, after, () => {
+      this.hud.setLives(this.lives.lives);
+      this.audio.play('pop');
+    });
     this.hud.markCleared(i + 1);
     this.hud.popup(this.player.x, this.player.y - 40, '+½ life');
     const next = this.level.hurdles[i + 1];
@@ -128,23 +136,25 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // Caught by police or failed a hurdle: lose a life, respawn at the hurdle start.
-  loseLife({ amount, splash = false, message, banner }) {
+  loseLife({ amount, splash = false, sound, message, banner, reason }) {
     if (this.state !== 'playing') return;
     this.state = 'respawning';
     if (splash) this.splash.explode(14, this.player.x, this.player.body.bottom);
     if (banner) this.hud.showBanner(banner, 'Back to the start of this hurdle');
     this.player.leaveHiding();
 
-    this.lives.loseLife(amount);
-    this.hud.setLives(this.lives.lives);
+    const { before, after } = this.lives.loseLife(amount);
+    this.hud.breakHeart(before, after);
+    this.audio.play(sound);
     this.player.freeze();
     this.player.setVisible(false);
     this.cameras.main.shake(200, 0.006);
     this.cameras.main.flash(250, 255, 170, 170);
 
     if (this.lives.isGameOver()) {
-      this.cameras.main.fadeOut(600);
-      this.time.delayedCall(700, () => this.scene.start('GameOverScene', { level: this.run.level }));
+      this.time.delayedCall(250, () => this.audio.play('gameOver'));
+      this.cameras.main.fadeOut(900);
+      this.time.delayedCall(1000, () => this.scene.start('GameOverScene', { level: this.run.level, reason }));
       return;
     }
 

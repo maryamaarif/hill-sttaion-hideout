@@ -60,11 +60,19 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 - Spring teaches hiding **with no text**: the first garden officer waits facing away, then turns and walks toward the player as they enter. His cone reaches the first bush.
 
 ### Lives
-- Start Level 1 with **3 lives**.
-- Getting caught or failing a hurdle: **−1 life**, respawn at the start of that hurdle.
-- Each hurdle crossed: **+0.5 life**.
-- Lives **carry forward** from season to season.
-- Lives reach 0 → **Game Over**.
+- Start Level 1 with **3 lives**. Lives are a number in **steps of 0.5** (`LivesSystem.snap`) and **never go below 0**.
+- Getting caught or failing a hurdle: **−1 life**, respawn at the start of that hurdle. Feedback: screen shake, a brief flash, a sound (`caught`, `splash` or `hit`), and the lost heart drops out of the HUD.
+- Each hurdle crossed: **+0.5 life**. Feedback: a chime, and a half heart flies from the player into its HUD slot, which pulses (`pop`).
+- Lives **carry forward** from season to season (passed in the run data, shown on the season transition screen).
+- Lives reach 0 → **GameOverScene**: "Try again" restarts the level from Spring with 3 lives; "Main menu" goes back.
+
+### HUD (top of the screen, readable at a glance)
+- Left: hearts (full / half / empty outline), plus "HIDDEN" while hiding.
+- Centre: season icon + name, hurdle progress dots (● cleared, ◉ current, ○ upcoming), current hurdle name.
+- Right: coin icon + saved coin total.
+
+### Audio
+- No audio files yet: sound effects are synthesised with Web Audio from recipes in `src/config/audio.js`, played by `AudioSystem.play(name)`. Add new effects there, not in scenes.
 
 ### Levels and coins
 - Completing all 4 seasons finishes one level.
@@ -98,9 +106,11 @@ src/systems/            LevelBuilder (layout → terrain/hazards/triggers), Hurd
                         (start/end trigger zones, checkpoints), LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
-src/ui/                 Hud (hearts, hurdle progress, banners, panels)
+src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects)
+src/systems/RunState.js newLevelRun(): the run data passed between scenes
 src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)
 src/config/levels.js    difficulty numbers per level
+src/config/audio.js     synthesised sound-effect recipes + volume
 assets/                 images, audio (add when needed)
 ```
 
