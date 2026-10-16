@@ -35,7 +35,24 @@ export const PLAYER = {
   maxFallSpeed: 760,
   crouchSpeedMultiplier: 0.35,
   walkAnimThreshold: 25, // px/s
+  movingThreshold: 30, // below this speed the player counts as standing still (heat)
   body: { width: 16, height: 38, crouchHeight: 24 },
+  // Swimming in water marked swim: true. Season `swim` config sets speeds and breath.
+  swim: {
+    floatDepth: 26, // body bottom sits this far below the surface when floating
+    verticalResponse: 7, // how quickly the player settles to float/dive depth
+    maxVerticalSpeed: 220,
+    jumpOutMultiplier: 0.85, // jump out of the water at this fraction of jumpVelocity
+    accelerationMultiplier: 0.6,
+    bubbleEveryMs: 260,
+  },
+};
+
+// Moving platforms (canoes, logs). Speeds are per mover in the season layout.
+export const MOVERS = {
+  boardDelayMs: 250, // a waiting canoe sets off this long after the player steps in
+  fadeMs: 350, // looping movers fade out at the end and back in at the start
+  bobPixels: 1.5, // visual bob on the water
 };
 
 export const RESPAWN = {

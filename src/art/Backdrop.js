@@ -65,8 +65,10 @@ export function buildBackdrop(scene, palette, worldWidth) {
   const sky = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH.sky);
   sky.fillGradientStyle(p.skyTop, p.skyTop, p.skyBottom, p.skyBottom, 1);
   sky.fillRect(0, 0, W, H);
-  sky.fillStyle(p.sun, 0.45).fillCircle(W * 0.8, 92, 54);
-  sky.fillStyle(p.sun, 1).fillCircle(W * 0.8, 92, 36);
+  const sunR = p.sunRadius ?? 36;
+  sky.fillStyle(p.sun, 0.25).fillCircle(W * 0.8, 92, sunR * 2.1);
+  sky.fillStyle(p.sun, 0.45).fillCircle(W * 0.8, 92, sunR * 1.5);
+  sky.fillStyle(p.sun, 1).fillCircle(W * 0.8, 92, sunR);
 
   const clouds = addLayer(scene, LAYERS.clouds, DEPTH.clouds, worldWidth);
   const rndC = seededRandom(3);

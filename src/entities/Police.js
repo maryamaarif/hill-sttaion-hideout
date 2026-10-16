@@ -11,16 +11,22 @@ function lerpColor(a, b, t) {
 // Plain-clothes officer. Walks between route.from and route.to, pauses, turns.
 // Sees the player inside a cone in front of them; a meter fills while seen.
 //
-// route: { from, to, startAt: 'from' | 'to', activateX?, waitFacing? }
+// route: { from, to, startAt: 'from' | 'to', activateX?, waitFacing?, y?, tiltDeg?, pauseMs? }
 //   startAt     which end the officer starts at; they first walk toward the other end
 //   activateX   if set, the officer stands still (facing waitFacing) until the
 //               player passes this x, then starts the patrol
+//   y           feet height for an officer on a bridge/jetty (default: layout ground)
+//   tiltDeg     aim the cone further down, e.g. from a bridge onto the river
+//   pauseMs     override the season pause; from === to makes a lookout who just turns
 export default class Police {
   constructor(scene, route, settings, groundY, visibility = 1) {
     this.scene = scene;
     this.route = route;
     this.settings = settings;
-    this.groundY = groundY;
+    this.floorY = groundY; // the cone is clipped here
+    this.groundY = route.y ?? groundY; // where this officer stands
+    this.tilt = (route.tiltDeg ?? POLICE.coneTiltDeg) * DEG;
+    this.pauseMs = route.pauseMs ?? settings.pauseMs;
     this.visibility = visibility;
 
     this.cone = scene.add.graphics().setDepth(DEPTH.cone);
@@ -66,7 +72,7 @@ export default class Police {
     if (player.hidden || !player.visible || time < player.graceUntil) return false;
     const eye = this.eye();
     const half = (this.settings.visionAngleDeg / 2) * DEG;
-    const tilt = POLICE.coneTiltDeg * DEG;
+    const tilt = this.tilt;
     const b = player.body;
     const points = [
       { x: b.center.x, y: b.top + 4 },
@@ -127,7 +133,7 @@ export default class Police {
     if ((this.walkDir > 0 && this.x >= end) || (this.walkDir < 0 && this.x <= end)) {
       this.x = end;
       this.paused = true;
-      this.pauseUntil = time + this.settings.pauseMs;
+      this.pauseUntil = time + this.pauseMs;
     }
   }
 
@@ -137,20 +143,20 @@ export default class Police {
     // Vision cone: a fan clipped to the ground, warming to red as the meter fills.
     const eye = this.eye();
     const half = (this.settings.visionAngleDeg / 2) * DEG;
-    const tilt = POLICE.coneTiltDeg * DEG;
+    const tilt = this.tilt;
     const steps = Math.max(2, Math.ceil((half * 2) / (POLICE.coneStepDeg * DEG)));
     const points = [eye];
     for (let i = 0; i <= steps; i++) {
       const a = tilt - half + (i / steps) * half * 2;
       points.push({
         x: eye.x + this.dir * Math.cos(a) * this.length,
-        y: Math.min(this.groundY, eye.y + Math.sin(a) * this.length),
+        y: Math.min(Math.max(this.floorY, this.groundY), eye.y + Math.sin(a) * this.length),
       });
     }
-    const color = lerpColor(POLICE.coneColor, POLICE.alertColor, this.detection);
+    const color = lerpColor(this.settings.coneColor ?? POLICE.coneColor, POLICE.alertColor, this.detection);
     this.cone.clear();
     this.cone.fillStyle(color, POLICE.coneAlpha + this.detection * 0.15).fillPoints(points, true);
-    const edge = lerpColor(POLICE.coneEdgeColor, POLICE.alertColor, this.detection);
+    const edge = lerpColor(this.settings.coneEdgeColor ?? POLICE.coneEdgeColor, POLICE.alertColor, this.detection);
     this.cone.lineStyle(2, edge, 0.7).strokePoints(points, true);
 
     // Detection meter: "?" while suspicious, "!" once alarmed.

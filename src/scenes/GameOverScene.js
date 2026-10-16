@@ -7,6 +7,8 @@ const MESSAGES = {
   caught: 'A plain-clothes officer recognised you.',
   water: 'You ended up in the water once too often.',
   fell: 'You took one tumble too many.',
+  heat: 'The summer sun got the better of you.',
+  branch: 'One branch too many knocked you into the river.',
 };
 
 export default class GameOverScene extends Phaser.Scene {

@@ -36,6 +36,19 @@ export const SFX = {
     { freq: 330, type: 'triangle', start: 0.25, duration: 0.25, gain: 0.4 },
     { freq: 262, to: 196, type: 'triangle', start: 0.5, duration: 0.6, gain: 0.4 },
   ],
+  // Dropped into swimmable water.
+  splashSoft: [{ freq: 1200, noise: true, start: 0, duration: 0.25, gain: 0.35 }],
+  // Started a dive.
+  dive: [
+    { freq: 500, to: 900, type: 'sine', start: 0, duration: 0.08, gain: 0.25 },
+    { freq: 700, to: 1200, type: 'sine', start: 0.07, duration: 0.08, gain: 0.2 },
+  ],
+  // Out of breath: forced to surface.
+  gasp: [{ freq: 1500, to: 600, noise: true, start: 0, duration: 0.3, gain: 0.45 }],
+  // Too long in the sun.
+  faint: [{ freq: 600, to: 150, type: 'triangle', start: 0, duration: 0.6, gain: 0.35 }],
+  // Hit an obstacle.
+  bonk: [{ freq: 160, to: 90, type: 'square', start: 0, duration: 0.12, gain: 0.3 }],
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
 };

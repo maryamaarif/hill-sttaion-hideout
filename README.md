@@ -23,13 +23,14 @@ Then open <http://localhost:8000>.
 |---|---|
 | ← → / A D | Move |
 | ↑ / W / Space | Jump |
-| ↓ / S | Hide in a bush or flower bed (move or jump to leave) |
+| ↓ / S | Hide in a bush, flower bed, overhang or reeds (move or jump to leave); hold to dive when swimming |
 | Enter | Confirm on menus |
 
 ### What's playable
 
 - **Spring** is a full stage: three hurdles (Meadow Walk, Stepping Stones, Flower Garden), ending at the Garden Gate. Plain-clothes officers (look for the sunglasses) patrol the garden: stay out of their vision cones or hide.
-- Summer, Fall and Winter are placeholders for now: press **N** to skip them.
+- **Summer** is a full stage: a hot quarry (keep moving, rest in the shade), a canoe run past a bridge lookout, and a lake swim where you dive under the jetty officer's gaze.
+- Fall and Winter are placeholders for now: press **N** to skip them.
 - Every screen shows which key continues.
 
 ## Deploy to GitHub Pages

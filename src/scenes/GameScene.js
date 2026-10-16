@@ -1,6 +1,6 @@
 import { addScreenText, onKey } from './ui.js';
 import { SEASON_ORDER } from '../seasons/index.js';
-import { CAMERA, DEPTH, LIVES, RESPAWN } from '../config/game.js';
+import { CAMERA, DEPTH, LIVES, PLAYER, RESPAWN } from '../config/game.js';
 import { buildBackdrop } from '../art/Backdrop.js';
 import buildLevel from '../systems/LevelBuilder.js';
 import HurdleSystem from '../systems/HurdleSystem.js';
@@ -10,10 +10,13 @@ import AudioSystem from '../systems/AudioSystem.js';
 import SaveSystem from '../systems/SaveSystem.js';
 import Player from '../entities/Player.js';
 import Police from '../entities/Police.js';
+import HeatSystem from '../systems/HeatSystem.js';
 import Hud from '../ui/Hud.js';
+import PlayerMeters from '../ui/PlayerMeters.js';
 
 // One shared engine for every season. The season config + layout decide
-// physics, art, hazards, police and hurdles; this scene never special-cases a season.
+// physics, art, hazards, moving platforms, water, heat, police and hurdles;
+// this scene never special-cases a season.
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -21,7 +24,8 @@ export default class GameScene extends Phaser.Scene {
 
   create(data) {
     this.run = data;
-    this.season = SEASON_ORDER[data.seasonIndex];
+    // Season config with hurdle timing tuned for the level (breath, stamina, movers).
+    this.season = DifficultySystem.tuneSeason(SEASON_ORDER[data.seasonIndex], data.level);
     this.player = null;
     if (!this.season.layout) {
       this.createPlaceholder();
@@ -29,6 +33,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     const { layout, physics } = this.season;
+    this.events.once('shutdown', () => this.events.off('player-enter-water').off('player-dive').off('player-out-of-breath'));
     const { width: W, height: H } = this.scale;
     this.state = 'playing';
     this.lives = new LivesSystem(data.lives);
@@ -42,20 +47,33 @@ export default class GameScene extends Phaser.Scene {
     this.level = buildLevel(this, this.season);
     this.hidingSpots = this.level.hidingSpots;
 
-    this.player = new Player(this, layout.spawn.x, layout.spawn.y, physics);
+    this.movers = this.level.movers;
+    this.player = new Player(this, layout.spawn.x, layout.spawn.y, this.season);
     this.physics.add.collider(this.player, this.level.solids);
+    this.physics.add.collider(this.player, this.movers.map((m) => m.zone));
+    this.physics.add.overlap(this.player, this.level.obstacles, () =>
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, sound: 'bonk', message: 'Bonk!', reason: 'branch' }),
+    );
     this.physics.add.overlap(this.player, this.level.hazards, () =>
       this.loseLife({ amount: LIVES.lossOnHurdleFail, splash: true, sound: 'splash', message: '−1 life', reason: 'water' }),
     );
     this.physics.add.overlap(this.player, this.level.goalZone, () => this.reachGoal());
 
     // Officers: layout routes (+ extra routes from level 2 on), season settings × level.
-    const policeSettings = DifficultySystem.policeSettings(this.season.police, data.level);
+    // A season palette can recolour cones so they stand out against its scenery.
+    const policeSettings = {
+      ...DifficultySystem.policeSettings(this.season.police, data.level),
+      coneColor: this.season.palette.cone,
+      coneEdgeColor: this.season.palette.coneEdge,
+    };
     const bonus = DifficultySystem.forLevel(data.level).policeCountBonus;
     const routes = [...(layout.police ?? []), ...(layout.extraPolice ?? []).slice(0, bonus)];
     this.police = routes.map(
       (route) => new Police(this, route, policeSettings, layout.groundY, this.season.visibility ?? 1),
     );
+
+    this.heat = new HeatSystem(this, layout.heatZones, this.season.heat, layout.groundY);
+    this.meters = new PlayerMeters(this);
 
     this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
     this.hud.setLives(this.lives.lives);
@@ -81,6 +99,24 @@ export default class GameScene extends Phaser.Scene {
       scale: { start: 1, end: 0.4 },
       emitting: false,
     }).setDepth(DEPTH.water + 1);
+    this.bubbles = this.add.particles(0, 0, 'bubble', {
+      speedY: { min: -40, max: -70 },
+      speedX: { min: -10, max: 10 },
+      lifespan: 700,
+      alpha: { start: 0.9, end: 0 },
+      emitting: false,
+    }).setDepth(DEPTH.water + 1);
+    this.nextBubbleAt = 0;
+
+    this.events.on('player-enter-water', (p) => {
+      this.splash.explode(8, p.x, p.body.bottom - 20);
+      this.audio.play('splashSoft');
+    });
+    this.events.on('player-dive', () => this.audio.play('dive'));
+    this.events.on('player-out-of-breath', (p) => {
+      this.audio.play('gasp');
+      this.hud.popup(p.x, p.y - 40, 'Out of breath!', '#bfeaff');
+    });
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, layout.width, H);
@@ -92,24 +128,50 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this.player) return;
+    const dt = delta / 1000;
+    const player = this.player;
     const playing = this.state === 'playing';
-    const spot = this.player.hidden
-      ? this.player.hidingSpot
-      : this.hidingSpots.find((s) => s.contains(this.player));
-    this.player.nearSpot = playing ? (spot ?? null) : null;
-    this.player.update(time, delta);
-    this.cameras.main.followOffset.x = this.player.flipX ? CAMERA.lookAheadX : -CAMERA.lookAheadX;
 
-    const catcher = this.police.find((officer) => officer.update(time, delta, this.player, playing));
+    // Moving platforms: carry whoever is standing on one.
+    const rider = playing ? this.movers.find((m) => m.isRiding(player)) : null;
+    this.movers.forEach((m) => m.update(time, dt, m === rider));
+    if (rider) player.x += rider.dx;
+    player.carrier = rider ?? null;
+
+    // Being carried out of a wide hiding spot (reeds) uncovers the player.
+    if (player.hidingSpot && !player.hidingSpot.contains(player)) player.leaveHiding();
+
+    const spot = player.hidden ? player.hidingSpot : this.hidingSpots.find((s) => s.contains(player));
+    player.nearSpot = playing ? (spot ?? null) : null;
+    player.water = this.level.swimWaters.find((w) => player.x >= w.x && player.x <= w.x + w.w) ?? null;
+    player.update(time, delta);
+    this.cameras.main.followOffset.x = player.flipX ? CAMERA.lookAheadX : -CAMERA.lookAheadX;
+
+    if (player.submerged && time >= this.nextBubbleAt) {
+      this.bubbles.explode(1, player.x + (player.flipX ? -6 : 6), player.body.top);
+      this.nextBubbleAt = time + PLAYER.swim.bubbleEveryMs;
+    }
+
+    const catcher = this.police.find((officer) => officer.update(time, delta, player, playing));
+    const heat = playing ? this.heat.update(dt, player, Boolean(spot)) : null;
+    this.meters.update(player, [
+      { kind: 'stamina', value: this.heat.stamina, show: this.heat.active && (this.heat.stamina < 1 || this.heat.standingInSun) },
+      { kind: 'breath', value: player.breath, show: player.swimming || player.breath < 1 },
+    ]);
     if (!playing) return;
 
     this.hidingSpots.forEach((s) => {
-      s.setPrompt(s === spot && !this.player.hidden);
-      s.setOccupied(s === this.player.hidingSpot);
+      s.setPrompt(s === spot && !player.hidden && !player.swimming, player);
+      s.setOccupied(s === player.hidingSpot);
     });
-    this.hud.setHidden(this.player.hidden);
+    this.hud.setHidden(player.hidden);
 
-    if (catcher) {
+    if (heat === 'warn') {
+      this.hud.popup(player.x, player.y - 56, 'Too hot! Find shade', '#ffd27a');
+    }
+    if (heat === 'faint') {
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'faint', message: 'Fainted!', banner: 'Too hot!', reason: 'heat' });
+    } else if (catcher) {
       this.loseLife({ amount: LIVES.lossOnCaught, sound: 'caught', message: 'Caught!', banner: 'Spotted!', reason: 'caught' });
     } else if (this.player.y > this.scale.height + RESPAWN.killMarginY) {
       this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'hit', message: '−1 life', reason: 'fell' });
@@ -164,6 +226,8 @@ export default class GameScene extends Phaser.Scene {
       const y = this.season.layout.groundY - RESPAWN.dropHeight;
       this.player.respawn(x, y, this.time.now, RESPAWN.inputLockMs);
       this.police.forEach((officer) => officer.reset());
+      this.movers.forEach((m) => m.reset());
+      this.heat.reset();
       this.hud.setHidden(false);
       this.state = 'playing';
     });

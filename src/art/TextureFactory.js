@@ -157,6 +157,44 @@ export function createCommonTextures(scene) {
   makeTexture(scene, 'droplet', 6, 6, (g) => {
     g.fillStyle(0xd8f3ff).fillCircle(3, 3, 3);
   });
+  makeTexture(scene, 'bubble', 8, 8, (g) => {
+    g.lineStyle(1.5, 0xe8fbff).strokeCircle(4, 4, 3);
+    g.fillStyle(0xffffff).fillCircle(3, 3, 1);
+  });
+  makeTexture(scene, 'seed', 10, 10, (g) => {
+    g.lineStyle(1, 0xffffff, 0.9);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      g.lineBetween(5, 5, 5 + Math.cos(a) * 4.5, 5 + Math.sin(a) * 4.5);
+    }
+    g.fillStyle(0xfff6c8).fillCircle(5, 5, 1.5);
+  });
+  // A soft vertical wobble of light: rises off hot ground.
+  makeTexture(scene, 'shimmer', 10, 40, (g) => {
+    for (let y = 0; y < 40; y += 2) {
+      const x = 5 + Math.sin(y * 0.4) * 3;
+      g.fillStyle(0xffffff, 0.5 * Math.sin((y / 40) * Math.PI)).fillRect(x - 1, y, 2, 2);
+    }
+  });
+
+  // Moving platforms. Canoe rim sits above its deck so the rider's feet are inside.
+  makeTexture(scene, 'mover-canoe', 130, 30, (g) => {
+    g.fillStyle(0xb8341f).fillPoints([{ x: 0, y: 2 }, { x: 14, y: 8 }, { x: 116, y: 8 }, { x: 130, y: 2 }, { x: 116, y: 28 }, { x: 14, y: 28 }], true);
+    g.fillStyle(0xe8553b).fillPoints([{ x: 4, y: 5 }, { x: 16, y: 10 }, { x: 114, y: 10 }, { x: 126, y: 5 }, { x: 114, y: 25 }, { x: 16, y: 25 }], true);
+    g.fillStyle(0xffd23f).fillRect(16, 16, 98, 3);
+    g.fillStyle(0x7a2414).fillRect(14, 8, 102, 3);
+    g.fillStyle(0x8a5a2e).fillRect(40, 9, 4, 4);
+    g.fillRect(86, 9, 4, 4);
+  });
+  makeTexture(scene, 'mover-log', 110, 20, (g) => {
+    g.fillStyle(0x6b4423).fillRoundedRect(0, 0, 110, 20, 9);
+    g.fillStyle(0x8a5a34).fillRoundedRect(2, 2, 106, 12, 6);
+    g.lineStyle(2, 0x5a3a1c);
+    g.lineBetween(20, 6, 46, 6);
+    g.lineBetween(56, 11, 90, 11);
+    g.fillStyle(0xd9a86a).fillEllipse(104, 10, 9, 16);
+    g.lineStyle(1, 0x8a5a34).strokeEllipse(104, 10, 5, 9);
+  });
 
   // HUD icons: one per season, plus a coin. All 28×28 except the coin.
   makeTexture(scene, 'icon-spring', 28, 28, (g) => {
@@ -227,6 +265,90 @@ export function createCommonTextures(scene) {
   }
 }
 
+// Hiding-spot textures by kind, drawn from the season palette.
+// Only the kinds listed in a season's `hidingSpots` are generated.
+const HIDE_TEXTURES = {
+  bush: {
+    width: 100,
+    height: 62,
+    draw(g, p) {
+      const blobs = [[22, 42, 20], [50, 32, 27], [78, 42, 20]];
+      g.fillStyle(p.bushDark);
+      blobs.forEach(([x, y, r]) => g.fillCircle(x, y, r));
+      g.fillRect(4, 42, 92, 20);
+      g.fillStyle(p.bush);
+      blobs.forEach(([x, y, r]) => g.fillCircle(x, y - 3, r - 4));
+      g.fillStyle(p.bushLight);
+      blobs.forEach(([x, y, r]) => g.fillCircle(x - r * 0.3, y - r * 0.45, r * 0.35));
+      const rnd = seededRandom(11);
+      for (let i = 0; i < 9; i++) {
+        g.fillStyle(p.flowers[i % p.flowers.length]);
+        g.fillCircle(12 + rnd() * 76, 14 + rnd() * 36, 2.5);
+      }
+    },
+  },
+  // Tall, dense flower bed: tall enough to cover a crouching player.
+  flowers: {
+    width: 96,
+    height: 44,
+    draw(g, p) {
+      g.fillStyle(p.dirtDark).fillRoundedRect(2, 36, 92, 8, 3);
+      const rnd = seededRandom(17);
+      for (let i = 0; i < 26; i++) {
+        const x = 6 + (i / 25) * 84 + (rnd() - 0.5) * 4;
+        const top = 8 + rnd() * 12;
+        g.lineStyle(3, p.grassDark).lineBetween(x, 40, x, top);
+        g.fillStyle(p.bushDark).fillEllipse(x + 3, 30 - rnd() * 6, 7, 13);
+      }
+      g.fillStyle(p.bush).fillRect(4, 28, 88, 10);
+      for (let i = 0; i < 22; i++) {
+        const x = 8 + (i / 21) * 80 + (rnd() - 0.5) * 6;
+        const y = 6 + rnd() * 14;
+        g.fillStyle(p.flowers[i % p.flowers.length]);
+        g.fillEllipse(x, y, 9, 11);
+        g.fillTriangle(x - 4.5, y - 2, x - 1.5, y - 8, x + 1, y - 2);
+        g.fillTriangle(x - 1, y - 2, x + 1.5, y - 8, x + 4.5, y - 2);
+      }
+    },
+  },
+  // Rock overhang: a heavy lip of rock with cool shade beneath (shade + hiding).
+  overhang: {
+    width: 120,
+    height: 100,
+    draw(g, p) {
+      g.fillStyle(0x1b2a4a, 0.32).fillRect(6, 30, 108, 70); // shade
+      g.fillStyle(0x1b2a4a, 0.18).fillRect(0, 40, 120, 60);
+      g.fillStyle(p.rockDark).fillRect(98, 20, 22, 80); // back pillar
+      g.fillStyle(p.rock).fillRect(102, 20, 14, 80);
+      g.fillStyle(p.rockDark).fillPoints([{ x: 0, y: 14 }, { x: 18, y: 2 }, { x: 70, y: 0 }, { x: 120, y: 6 }, { x: 120, y: 36 }, { x: 60, y: 42 }, { x: 10, y: 36 }], true);
+      g.fillStyle(p.rock).fillPoints([{ x: 4, y: 14 }, { x: 20, y: 4 }, { x: 70, y: 2 }, { x: 118, y: 8 }, { x: 118, y: 28 }, { x: 60, y: 34 }, { x: 12, y: 30 }], true);
+      g.fillStyle(p.rockLight).fillRect(22, 6, 60, 4);
+      g.lineStyle(2, p.rockDark).lineBetween(40, 12, 48, 26);
+      g.lineBetween(84, 10, 78, 24);
+      g.fillStyle(p.rockDark);
+      g.fillCircle(20, 97, 4);
+      g.fillCircle(30, 98, 3);
+    },
+  },
+  // Tall reeds and cattails standing in water; tiled along the river bank.
+  reeds: {
+    width: 100,
+    height: 130,
+    draw(g, p) {
+      const rnd = seededRandom(23);
+      for (let layer = 0; layer < 2; layer++) {
+        for (let i = 0; i < 22; i++) {
+          const x = 4 + (i / 21) * 92 + (rnd() - 0.5) * 6;
+          const top = 10 + rnd() * 40 + layer * 14;
+          const lean = (rnd() - 0.5) * 12;
+          g.lineStyle(layer ? 4 : 3, layer ? p.reed : p.reedDark).lineBetween(x, 130, x + lean, top);
+          if (rnd() < 0.3) g.fillStyle(p.reedTip).fillEllipse(x + lean, top + 8, 6, 18);
+        }
+      }
+    },
+  },
+};
+
 export function createSeasonTextures(scene, season) {
   const p = season.palette;
   const k = season.key;
@@ -245,44 +367,12 @@ export function createSeasonTextures(scene, season) {
     g.fillStyle(p.blossomLight);
     blobs.forEach(([x, y, r]) => g.fillCircle(x - r * 0.3, y - r * 0.35, r * 0.4));
     const rnd = seededRandom(7);
-    g.fillStyle(0xffffff, 0.8);
+    g.fillStyle(p.treeSpeckle ?? 0xffffff, 0.8);
     for (let i = 0; i < 26; i++) g.fillCircle(20 + rnd() * 100, 20 + rnd() * 90, 1.6);
   });
 
-  makeTexture(scene, `hide-bush-${k}`, 100, 62, (g) => {
-    const blobs = [[22, 42, 20], [50, 32, 27], [78, 42, 20]];
-    g.fillStyle(p.bushDark);
-    blobs.forEach(([x, y, r]) => g.fillCircle(x, y, r));
-    g.fillRect(4, 42, 92, 20);
-    g.fillStyle(p.bush);
-    blobs.forEach(([x, y, r]) => g.fillCircle(x, y - 3, r - 4));
-    g.fillStyle(p.bushLight);
-    blobs.forEach(([x, y, r]) => g.fillCircle(x - r * 0.3, y - r * 0.45, r * 0.35));
-    const rnd = seededRandom(11);
-    for (let i = 0; i < 9; i++) {
-      g.fillStyle(p.flowers[i % p.flowers.length]);
-      g.fillCircle(12 + rnd() * 76, 14 + rnd() * 36, 2.5);
-    }
-  });
-
-  // Tall, dense flower bed: tall enough to cover a crouching player.
-  makeTexture(scene, `hide-flowers-${k}`, 96, 44, (g) => {
-    g.fillStyle(p.dirtDark).fillRoundedRect(2, 36, 92, 8, 3);
-    const rnd = seededRandom(17);
-    for (let i = 0; i < 26; i++) {
-      const x = 6 + (i / 25) * 84 + (rnd() - 0.5) * 4;
-      const top = 8 + rnd() * 12;
-      g.lineStyle(3, p.grassDark).lineBetween(x, 40, x, top);
-      g.fillStyle(p.bushDark).fillEllipse(x + 3, 30 - rnd() * 6, 7, 13);
-    }
-    g.fillStyle(p.bush).fillRect(4, 28, 88, 10);
-    for (let i = 0; i < 22; i++) {
-      const x = 8 + (i / 21) * 80 + (rnd() - 0.5) * 6;
-      const y = 6 + rnd() * 14;
-      g.fillStyle(p.flowers[i % p.flowers.length]);
-      g.fillEllipse(x, y, 9, 11);
-      g.fillTriangle(x - 4.5, y - 2, x - 1.5, y - 8, x + 1, y - 2);
-      g.fillTriangle(x - 1, y - 2, x + 1.5, y - 8, x + 4.5, y - 2);
-    }
-  });
+  for (const kind of season.hidingSpots ?? []) {
+    const spec = HIDE_TEXTURES[kind];
+    if (spec) makeTexture(scene, `hide-${kind}-${k}`, spec.width, spec.height, (g) => spec.draw(g, p));
+  }
 }

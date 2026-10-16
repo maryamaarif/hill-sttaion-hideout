@@ -48,6 +48,22 @@ Each season has **exactly 3 hurdles**, each based on that season's real activity
 - **Every hurdle is a platformer section with one twist** (e.g. water fails you, low friction, moving carriages, low visibility). Never a separate mini-game with its own controls. Canoeing, swimming and skiing are still the same run/jump/hide controls, with the twist expressed through physics, hazards or hiding spots in config.
 - If a twist needs new behaviour, add it to the shared engine as a generic, config-driven feature (e.g. "moving platforms", "visibility radius") that any season can use.
 
+### Engine features available to every season (all config/layout driven)
+| Feature | Layout / config keys | Used by |
+|---|---|---|
+| Ground at different heights, quarry rock style, pits, cliffs | `ground[{x,w,y?,kind?}]`, `pits`, `cliffs` | Summer quarry |
+| Hazard water (fail on contact) vs swimmable water | `water[{x,w,swim?}]`, season `swim` | Spring stream, Summer river / lake |
+| Swimming: float, Down = dive (hidden, uses breath), jump out from the surface | season `swim { breathSeconds, refillPerSec, speedMultiplier, diveSpeedMultiplier, diveDepth, relockAt }` | Summer lake |
+| Moving platforms: `ferry` (waits for the rider) and `loop` (fades and restarts); the rider is carried and keeps the platform's momentum when jumping | `movers[{kind,mode,from,to,y,w,speed,phase?}]` | Summer canoe and logs |
+| Obstacles: touching one fails the hurdle (forgiving hitbox) | `obstacles[{x,top,kind}]` | Summer river snags |
+| Heat: standing still in the open sun drains stamina; any hiding spot is shade; empty = faint (−1 life) | `heatZones[{x,w}]`, season `heat { staminaSeconds, regenPerSec, warnAt, glareAlpha }` | Summer quarry |
+| Hiding spots: narrow (tuck to centre) or wide/tiled (`w`), raised (`y`) | `hidingSpots[{x,kind,y?,w?}]`; textures by kind in `TextureFactory` | bush, flowers, overhang, reeds |
+| Police on raised spots, cone aimed down, lookouts that just turn | `police[{..., y?, tiltDeg?, pauseMs?}]` (`from === to` = lookout) | Summer bridge and jetty |
+| Per-season cone colours (for contrast with the scenery) | palette `cone`, `coneEdge` | Summer |
+| Level difficulty also tightens hurdle timing: less breath and stamina, faster movers | `DifficultySystem.tuneSeason` × `hurdleTimingMultiplier` | all |
+
+Player meters (stamina and breath) float above the player's head only while they matter (`src/ui/PlayerMeters.js`).
+
 **Seasons must change the RULES, not just the visuals.** Movement, friction, visibility, hazards and hiding spots differ per season. Each season's config file in `src/seasons/` declares these differences.
 
 ### Police
@@ -101,12 +117,14 @@ src/seasons/            one config per season (spring.js, summer.js, fall.js, wi
                         + index.js exporting SEASON_ORDER
 src/seasons/layouts/    one layout per season: ground, platforms, water, hiding spots,
                         decor, signs, hurdle start/end lines, goal (pixel coordinates)
-src/entities/           Player, Police, HidingSpot
+src/entities/           Player (run/jump/hide/swim), Police, HidingSpot, Mover (canoe/log)
 src/systems/            LevelBuilder (layout → terrain/hazards/triggers), HurdleSystem
-                        (start/end trigger zones, checkpoints), LivesSystem, SaveSystem,
+                        (start/end trigger zones, checkpoints), HeatSystem (stamina),
+                        LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
-src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects)
+src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects),
+                        PlayerMeters (stamina/breath bars above the player)
 src/systems/RunState.js newLevelRun(): the run data passed between scenes
 src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)
 src/config/levels.js    difficulty numbers per level
