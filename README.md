@@ -33,6 +33,14 @@ The seasons change the **rules**, not just the colours. The controls stay the sa
 
 Between seasons you choose a **perk** for the next one (e.g. *Warm coat: less slip in Winter*). In your **room** you spend coins on room upgrades (the room visibly changes), items for the next level (disguise hat, running shoes, thermos, map), extra hiding places in the seasons, and new outfits (a colour variant and a camouflage outfit per season). Each new level is noticeably harder.
 
+## Look, sound and feel
+
+- **Visuals.** Everything is painted in code in one painterly, lean-realistic style: leaf-by-leaf trees, layered rock, snowy spruces, volumetric clouds, mountains lit from the sun, five parallax layers, animated water, soft shadows and a seasonal lighting grade. The guest house on the hill dresses for each season.
+- **Outfits.** You and the plain-clothes police change clothes every season (with a spin and a puff of the new season's particles on the transition screen), and the room shop sells a colour variant and a camouflage outfit per season.
+- **Music.** One shared melody, arranged per season: a light flute in Spring, marimba and plucked guitar in Summer, accordion and piano with a steam-train rhythm in Fall, slow bells and strings in Winter, and solo piano in your room. A tense layer of pulsing strings and a heartbeat fades in while an officer's detection meter fills, and fades away when you hide.
+- **Soundscape.** Generated ambience per season (birdsong and spring rain, cicadas and lapping water, wind and a distant train whistle, howling winter wind) that swells during the weather event, and footsteps that change with the ground: grass, puddles, gravel, wood, stone, leaves and snow.
+- **Game feel.** A smooth look-ahead camera that eases out on the train roofs and the ski jump, squash and stretch on jumps and landings with a puff of the season's ground, a hit-stop when you're caught, a slow-motion beat when you clear a hurdle, and a time-lapse of the hillside between seasons.
+
 ## Controls
 
 | Key | Action |
@@ -67,4 +75,4 @@ Phaser 3.80.1 is loaded from a CDN and the Lora and Nunito fonts from Google Fon
 
 ## Made with
 
-Plain HTML and JavaScript with [Phaser 3.80.1](https://phaser.io). All art is painted in code at runtime in one painterly style shared by every season: gradient skies, five parallax layers with the guest house, the railway viaduct and the lake, textured ground, animated water, seasonal weather, soft lighting and shadows, and fully jointed characters. All music and sound is synthesised live with Web Audio, so there are no asset files. See [CREDITS.md](CREDITS.md) for third-party software and licences, and [CLAUDE.md](CLAUDE.md) for the full design and code structure.
+Plain HTML and JavaScript with [Phaser 3.80.1](https://phaser.io). All art is painted in code at runtime and all music, ambience and sound effects are synthesised live with Web Audio, so there are no image or audio files. The only third-party pieces are Phaser and two Google Fonts (Lora and Nunito). See [CREDITS.md](CREDITS.md) for third-party software and licences, and [CLAUDE.md](CLAUDE.md) for the full design and code structure.

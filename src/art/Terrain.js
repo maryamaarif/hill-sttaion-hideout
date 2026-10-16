@@ -1,6 +1,6 @@
 import { DEPTH, UI } from '../config/game.js';
 import {
-  paintTexture, paintChunks, trackForCleanup, css, shade, mix, seeded, radialGlow, vGradient, roundRect, speckle, grassBlades, rock, pine, puffy, contactShadow,
+  paintTexture, paintChunks, trackForCleanup, css, shade, mix, seeded, radialGlow, vGradient, roundRect, speckle, grassBlades, rock, pine, puffy, contactShadow, foliage,
 } from './Paint.js';
 import { woodGrain } from './TextureFactory.js';
 import { guestHouse } from './Backdrop.js';
@@ -545,7 +545,7 @@ export function addOverhead(scene, p, ob, gy) {
   if (kind === 'tunnel') {
     const ceiling = y + h;
     const k = key('tunnel');
-    const top = ceiling - 170;
+    const top = ceiling - 205; // room for the foliage on the crest
     paintTexture(scene, k, w + 160, gy - top, (ctx) => {
       ctx.translate(80 - x, -top);
       ctx.beginPath();
@@ -557,17 +557,36 @@ export function addOverhead(scene, p, ob, gy) {
       ctx.lineTo(x, ceiling);
       ctx.lineTo(x, gy);
       ctx.closePath();
+      // A grassy hillside over an earth cutting, lit from the left.
       const g = ctx.createLinearGradient(0, ceiling - 160, 0, gy);
-      g.addColorStop(0, css(p.rock));
-      g.addColorStop(1, css(p.rockDark));
+      g.addColorStop(0, css(shade(p.grass, 1.05)));
+      g.addColorStop(0.35, css(p.grassDark));
+      g.addColorStop(1, css(shade(p.dirtDark, 0.85)));
       ctx.fillStyle = g;
       ctx.fill();
-      speckle(ctx, x - 60, ceiling - 150, w + 120, 140, [p.rockDark, p.rockLight], 220, seeded(x), [0.6, 2], 0.5);
+      ctx.save();
+      ctx.clip();
+      const side = ctx.createLinearGradient(x - 80, 0, x + w + 80, 0);
+      side.addColorStop(0, css(0xffffff, 0.12));
+      side.addColorStop(0.5, css(0xffffff, 0));
+      side.addColorStop(1, css(0x000000, 0.22));
+      ctx.fillStyle = side;
+      ctx.fillRect(x - 80, ceiling - 170, w + 160, gy - ceiling + 170);
+      speckle(ctx, x - 60, ceiling - 150, w + 120, 150, [p.rockDark, p.dirtDark, p.grass], 260, seeded(x), [0.6, 2], 0.5);
+      ctx.restore();
+      // Autumn bushes and small trees growing over the hill, in uneven clumps.
       const rnd = seeded(x + 1);
-      for (let tx = x - 20; tx < x + w + 20; tx += 30) {
-        const c = p.leaves[Math.floor(rnd() * p.leaves.length)];
-        puffy(ctx, [[tx, ceiling - 140 + Math.abs(tx - x - w / 2) * 0.35 + rnd() * 20, 18]], c, shade(c, 1.3), shade(c, 0.65));
+      const clusters = [];
+      for (let tx = x - 50; tx < x + w + 50; tx += 22 + rnd() * 26) {
+        const top = ceiling - 150 + Math.abs(tx - x - w / 2) * 0.42;
+        clusters.push([tx, top + rnd() * 18, 12 + rnd() * 16]);
+        if (rnd() < 0.4) clusters.push([tx + rnd() * 16, top - 10 - rnd() * 8, 9 + rnd() * 8]);
       }
+      foliage(ctx, clusters, {
+        base: p.leaves,
+        light: p.leaves.map((c) => shade(c, 1.3)),
+        dark: p.leaves.map((c) => shade(c, 0.6)),
+      }, { rnd, leaf: 2.8, density: 0.5 });
       ctx.strokeStyle = css(p.stoneLight);
       ctx.lineWidth = 9;
       ctx.beginPath();

@@ -9,7 +9,9 @@ Design, code, art and music: the Hill Station Hideout team.
 **All art and audio were made by the team during the event.** There are no downloaded or pre-made assets:
 
 - Every sprite, background, icon and screen is painted in code at runtime with the browser's Canvas 2D API and Phaser (`src/art/`): gradients, shading, particles and lighting overlays. No image files.
-- All music and sound effects are synthesised live with the browser's Web Audio API from note patterns and sound recipes written for this game (`src/config/music.js`, `src/config/audio.js`).
+- Characters (the guest, the police in their seasonal disguises, the other guests) and every outfit are painted from a jointed skeleton in code (`src/art/Character.js`).
+- All music, ambience and sound effects are synthesised live with the browser's Web Audio API: the shared theme and its seasonal arrangements, the synthesised instruments (flute, marimba, guitar, accordion, piano, bells, strings), the tension layer, the season soundscapes and the footsteps all come from note patterns and recipes written for this game (`src/config/music.js`, `src/config/audio.js`, the `ambience` settings in `src/seasons/`).
+- **No third-party art or audio packs are used.** Free packs were considered for the art but rejected because none shared one consistent style.
 
 ## Third-party software
 

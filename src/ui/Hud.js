@@ -49,7 +49,7 @@ export default class Hud {
 
     // Wooden plaques behind each HUD group.
     const plaque = (x, y, w, h, ox) => addPanel(scene, x, y, w, h, 'wood').setOrigin(ox, 0).setScrollFactor(0).setDepth(DEPTH.hud - 1).setAlpha(0.94);
-    plaque(8, 6, 100, 38, 0);
+    this.heartsPlaque = plaque(8, 6, 100, 38, 0);
     plaque(W / 2, 4, 320, 84, 0.5);
     this.coinPlaque = plaque(W - 8, 6, 100, 38, 1);
 
@@ -85,6 +85,9 @@ export default class Hud {
   setLives(lives) {
     this.hearts.forEach((h) => h.destroy());
     this.hearts = createHearts(this.scene, this.heartsX, this.heartsY, lives).map(this.fixed);
+    // The plaque grows with the number of heart slots (lives above 3).
+    const slots = Math.max(LIVES.start, Math.ceil(lives));
+    this.heartsPlaque.setSize((20 + slots * (UI.heartSize + HEART_GAP)) * 2, 76); // texture px (2×)
   }
 
   heartCenter(index) {
