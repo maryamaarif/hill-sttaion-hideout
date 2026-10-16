@@ -142,9 +142,13 @@ export default class Police {
       }
       this.seeing = this.canSee(player, time, blockers);
       const rate = dt / this.settings.detectionTime;
+      const before = this.detection;
       this.detection = this.seeing
         ? Math.min(1, this.detection + rate)
         : Math.max(0, this.detection - rate * POLICE.drainRate);
+      // Sound cues: first "?" and the "!" alarm.
+      if (before === 0 && this.detection > 0) this.scene.events.emit('police-suspect', this);
+      if (before < POLICE.alarmAt && this.detection >= POLICE.alarmAt) this.scene.events.emit('police-alarm', this);
       if (!this.route.fixed && clues.length) this.followClues(time, clues, blockers);
     } else {
       this.seeing = false;

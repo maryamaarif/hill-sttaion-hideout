@@ -20,6 +20,7 @@ import SlopeSystem from '../systems/SlopeSystem.js';
 import BlizzardSystem from '../systems/BlizzardSystem.js';
 import FootprintSystem from '../systems/FootprintSystem.js';
 import Hud, { textStyle } from '../ui/Hud.js';
+import SettingsPanel from '../ui/SettingsPanel.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
 // One shared engine for every season. The season config + layout decide
@@ -45,7 +46,9 @@ export default class GameScene extends Phaser.Scene {
     }
 
     const { layout, physics } = this.season;
-    this.events.once('shutdown', () => this.events.off('player-enter-water').off('player-dive').off('player-out-of-breath').off('player-launch'));
+    this.events.once('shutdown', () => this.events
+        .off('player-enter-water').off('player-dive').off('player-out-of-breath').off('player-launch')
+        .off('player-jump').off('player-hide').off('police-suspect').off('police-alarm'));
     const { width: W, height: H } = this.scale;
     this.state = 'playing';
     this.lives = new LivesSystem(data.lives);
@@ -140,6 +143,18 @@ export default class GameScene extends Phaser.Scene {
     });
     this.events.on('player-dive', () => this.audio.play('dive'));
     this.events.on('player-launch', () => this.audio.play('launch'));
+    this.events.on('player-jump', () => this.audio.play('jump'));
+    this.events.on('player-hide', () => this.audio.play('hide'));
+    this.events.on('police-suspect', () => this.audio.play('suspect'));
+    this.events.on('police-alarm', () => this.audio.play('alert'));
+    this.audio.playMusic(this.season.music ?? this.season.key);
+
+    // ESC pauses the game and opens the settings.
+    this.paused = false;
+    this.settingsPanel = new SettingsPanel(this, { title: 'Paused', onClose: () => this.setPaused(false) });
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (!this.settingsPanel.blocking && this.state === 'playing') this.setPaused(true);
+    });
     this.events.on('player-out-of-breath', (p) => {
       this.audio.play('gasp');
       this.hud.popup(p.x, p.y - 40, 'Out of breath!', '#bfeaff');
@@ -154,8 +169,24 @@ export default class GameScene extends Phaser.Scene {
     if (ShopSystem.hasMap(data.items)) this.showPoliceRoutes();
   }
 
+  setPaused(paused) {
+    this.paused = paused;
+    if (paused) {
+      this.physics.world.pause();
+      this.tweens.pauseAll();
+      this.anims.pauseAll();
+      this.time.paused = true;
+      this.settingsPanel.open();
+    } else {
+      this.physics.world.resume();
+      this.tweens.resumeAll();
+      this.anims.resumeAll();
+      this.time.paused = false;
+    }
+  }
+
   update(time, delta) {
-    if (!this.player) return;
+    if (!this.player || this.paused) return;
     const dt = delta / 1000;
     const player = this.player;
     const playing = this.state === 'playing';
@@ -284,7 +315,7 @@ export default class GameScene extends Phaser.Scene {
     this.audio.play('chime');
     this.hud.flyHalfHeart(this.player.x, this.player.y - 30, after, () => {
       this.hud.setLives(this.lives.lives);
-      this.audio.play('pop');
+      this.audio.play('heart');
     });
     this.hud.markCleared(i + 1);
     this.hud.popup(this.player.x, this.player.y - 40, '+½ life');
@@ -309,6 +340,7 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.flash(250, 255, 170, 170);
 
     if (this.lives.isGameOver()) {
+      this.audio.stopMusic();
       this.time.delayedCall(250, () => this.audio.play('gameOver'));
       this.cameras.main.fadeOut(900);
       const { level, items, hidingPlaces } = this.run;

@@ -21,7 +21,10 @@ export default class LevelCompleteScene extends Phaser.Scene {
     save.highestLevel = Math.max(save.highestLevel, data.level + 1);
     SaveSystem.save(save);
 
-    this.cameras.main.setBackgroundColor('#2b2238');
+    this.cameras.main.setBackgroundColor(UI.screenBg);
+    const audio = new AudioSystem(this);
+    audio.playMusic('room');
+    let lastTick = 0;
     this.cameras.main.fadeIn(500);
     // Warm window glow: safe back at the guest house.
     this.add.circle(W / 2, H / 2 - 40, 260, 0xffc861, 0.08);
@@ -55,8 +58,14 @@ export default class LevelCompleteScene extends Phaser.Scene {
       duration: 1200,
       delay: 400,
       ease: 'Cubic.out',
-      onUpdate: () => total.setText(`+${Math.round(counter.value)} coins`),
-      onComplete: () => new AudioSystem(this).play('chime'),
+      onUpdate: () => {
+        total.setText(`+${Math.round(counter.value)} coins`);
+        if (this.time.now - lastTick > 55) {
+          lastTick = this.time.now;
+          audio.play('coin');
+        }
+      },
+      onComplete: () => audio.play('chime'),
     });
     this.add.text(W / 2, 395, `Total: ${save.coins} coins`, textStyle(18, { color: '#f3e6d0' })).setOrigin(0.5);
 

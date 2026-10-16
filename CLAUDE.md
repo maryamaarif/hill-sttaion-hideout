@@ -101,8 +101,18 @@ Player meters (stamina and breath) float above the player's head only while they
 - Centre: season icon + name, hurdle progress dots (● cleared, ◉ current, ○ upcoming), current hurdle name.
 - Right: coin icon + saved coin total.
 
-### Audio
-- No audio files yet: sound effects are synthesised with Web Audio from recipes in `src/config/audio.js`, played by `AudioSystem.play(name)`. Add new effects there, not in scenes.
+### Art style (one style for everything)
+- **Simple flat shapes**, drawn in code (`src/art/`), no image files and no gradients on sprites.
+- **Play layer** (player, police, hiding spots, vehicles, trees, props) has a **soft 1px outline in the shared ink** `INK = 0x3b2a20` (added automatically by `TextureFactory` to textures whose key matches `OUTLINED`). The **parallax background is flat with no outline**, so it reads as distance.
+- **Each season has its own palette** in its season config (`palette`); the shapes, proportions and line style are shared. New textures draw from the palette, never hard-coded season colours.
+- **UI** uses the same ink for panel borders and text strokes, the `UI.font`, cream panels `0xfff4e6`, gold highlight `0xffd54f`, and `UI.screenBg` behind menu-style screens. Text uses `textStyle()` from `src/ui/Hud.js`.
+- The player always wears the navy coat, red scarf and brown hat; police always wear the sunglasses.
+
+### Audio (Web Audio only, no files)
+- `src/systems/AudioSystem.js`: one shared audio graph (master → music / SFX gains), so music continues across scenes and crossfades when the track changes.
+- **Music**: looping step-sequencer tracks in `src/config/music.js` (patterns of note tokens). Spring gentle, Summer upbeat, Fall nostalgic with a train "chuff" rhythm, Winter slow and sparse bells, `room` for menu / hub / level complete. A season's track is its `music` key (default: the season key).
+- **SFX** recipes in `src/config/audio.js`: jump, hide, suspect "?", alert "!", caught, hurdle cleared (chime), half life gained (heart), coin tick, season change, plus splash, dive, gasp, faint, bonk, bell, rumble, whoosh, launch, game over, select. Scenes and entities raise events (`player-jump`, `player-hide`, `police-suspect`, `police-alarm`, …) and `GameScene` plays the sound.
+- **Settings**: music and SFX volume sliders + mute in `SettingsPanel` (menu, hub, and ESC pause in game). **M mutes anywhere** (with a toast). Saved in `settings { muted, musicVolume, sfxVolume }`.
 
 ### Levels and coins
 - Completing all 4 seasons finishes one level.
@@ -114,7 +124,7 @@ Between levels the player returns to their room. The room (`src/art/Room.js`) is
   1. *Room upgrades*: cosmetic progress.
   2. *Items* for the next level only (used up when it starts; kept on "Try again"): Disguise hat (slower detection), Running shoes (faster), Thermos (stamina and breath last longer), Map (a minimap of police routes and hiding spots for a few seconds at each season start). Item effects use the same dotted-path effects as perks (`src/systems/Effects.js`), applied by `ShopSystem`.
   3. *Hiding places*: permanent unlocks that add a hiding spot to one season's layout (garden shed, lakeside hut, hollow tree, ice cave).
-- **Keys**: ← → tabs, ↑ ↓ choose, ENTER buy, N next level, M menu, S sound. Everything is clickable too.
+- **Keys**: ← → tabs, ↑ ↓ choose, ENTER buy, N next level, ESC menu (M mutes anywhere). Settings button for volumes. Everything is clickable too.
 - **Next level** starts `highestLevel` with the new difficulty, packed items and unlocked hiding places (`newLevelRunFromSave`).
 - **Save** (`SaveSystem`, localStorage wrapped in try/catch, in-memory fallback if blocked): `coins`, `highestLevel`, `upgrades`, `items`, `hidingPlaces`, `settings { muted }`. The menu starts at the level reached and offers "Your room" once there is progress.
 
@@ -134,6 +144,7 @@ Each new level increases police count, patrol speed, vision cone length and dete
 - Left / Right (or A / D): move
 - Up / Space (or W): jump
 - Down (or S): hide at a hiding spot / dive (swimming)
+- ESC: pause + settings (in game); M: mute anywhere
 
 ## Code structure
 
@@ -161,11 +172,13 @@ src/systems/            LevelBuilder (layout → terrain/hazards/triggers), Hurd
 src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax),
                         Room (the hub room, drawn from owned upgrades)
 src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects),
+                        SettingsPanel (volume sliders, mute; menu / hub / pause),
                         PlayerMeters (stamina/breath bars above the player)
 src/systems/RunState.js newLevelRun(): the run data passed between scenes
 src/config/game.js      global tunables (lives, coins, player feel, camera, respawn, UI, depths)
 src/config/levels.js    difficulty numbers per level
 src/config/audio.js     synthesised sound-effect recipes + volume
+src/config/music.js     looping music tracks (note patterns) per season + room
 src/config/perks.js     season perks offered on the transition screen
 src/config/shop.js      room upgrades, items, hiding places (prices, effects)
 assets/                 images, audio (add when needed)
@@ -179,7 +192,7 @@ assets/                 images, audio (add when needed)
 - Keep modules small and focused; one class per file in `entities/` and `systems/`.
 - Art is drawn in code from the season palette (no image files yet). Keep the look consistent: soft pastel shapes, dark-brown outlined text, the player in a navy coat, red scarf and brown hat.
 - A season without a `layout` shows a placeholder screen (press N to finish), so the full flow always runs.
-- `window.__game` exposes the Phaser game for debugging/automated playtests. Set `DEBUG.physics` in `src/config/game.js` to see bodies and trigger zones.
+- `window.__game` and `window.__audio` expose the Phaser game and the audio engine for debugging/automated playtests. Set `DEBUG.physics` in `src/config/game.js` to see bodies and trigger zones.
 
 ### Layout design rules
 - Ground top is `layout.groundY`; the world is one screen tall and scrolls horizontally only.

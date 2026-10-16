@@ -1,20 +1,13 @@
 // Shared helpers for menu-style screens.
 import { UI } from '../config/game.js';
 import AudioSystem from '../systems/AudioSystem.js';
+import { textStyle } from '../ui/Hud.js';
 
 export function addScreenText(scene, title, lines = []) {
   const { width, height } = scene.scale;
+  scene.add.text(width / 2, height / 2 - 60, title, textStyle(44)).setOrigin(0.5);
   scene.add
-    .text(width / 2, height / 2 - 60, title, { fontFamily: 'sans-serif', fontSize: '40px', color: '#ffffff' })
-    .setOrigin(0.5);
-  scene.add
-    .text(width / 2, height / 2 + 20, lines.join('\n'), {
-      fontFamily: 'sans-serif',
-      fontSize: '20px',
-      color: '#dddddd',
-      align: 'center',
-      lineSpacing: 8,
-    })
+    .text(width / 2, height / 2 + 6, lines.join('\n'), textStyle(20, { color: '#f4f1ea', lineSpacing: 8 }))
     .setOrigin(0.5);
 }
 
@@ -23,7 +16,7 @@ export function onKey(scene, keyName, callback) {
 }
 
 // Vertical list of buttons. ↑/↓ (or W/S) to choose, ENTER/SPACE to confirm,
-// or click. items: [{ label, action }]. The first item starts selected.
+// or click. items: [{ label, action, keepOpen? }]. The first item starts selected.
 export function createMenu(scene, x, y, items, spacing = 64) {
   const audio = new AudioSystem(scene);
   let selected = 0;
@@ -40,7 +33,11 @@ export function createMenu(scene, x, y, items, spacing = 64) {
     return { bg, label };
   });
 
+  // A settings overlay (scene.settingsPanel) takes the keys while it is open.
+  const blocked = () => scene.settingsPanel?.blocking;
+
   function select(i) {
+    if (blocked()) return;
     if (selected !== -1 && i !== selected) audio.play('select');
     selected = (i + items.length) % items.length;
     buttons.forEach(({ bg, label }, j) => {
@@ -52,8 +49,8 @@ export function createMenu(scene, x, y, items, spacing = 64) {
   }
 
   function confirm(i) {
-    if (done) return;
-    done = true;
+    if (done || blocked()) return;
+    if (!items[i].keepOpen) done = true; // keepOpen: e.g. Settings, which returns here
     audio.play('select');
     items[i].action();
   }

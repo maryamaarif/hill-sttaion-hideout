@@ -68,12 +68,51 @@ function drawPolice(g, pose) {
   g.fillStyle(C.glint).fillRect(20, 8, 2, 1);
 }
 
+// ART STYLE: simple flat shapes, no gradients on sprites. Everything in the play
+// layer (characters, police, hiding spots, vehicles, trees) gets a soft 1px outline
+// in the shared ink colour; the parallax background stays flat with no outline, so
+// it reads as distance. UI uses the same ink for borders and text strokes.
+export const INK = 0x3b2a20;
+const OUTLINED = /^(player-|police-|mover-|train-|crossing-train|hide-|tree-)/;
+const OUTLINE_ALPHA = 0.7;
+
 function makeTexture(scene, key, width, height, draw) {
   if (scene.textures.exists(key)) return;
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
   draw(g);
   g.generateTexture(key, width, height);
   g.destroy();
+  if (OUTLINED.test(key)) addOutline(scene, key);
+}
+
+// Soft outline: ink is laid underneath every see-through edge pixel that touches
+// a solid one (so antialiased edges get a continuous line, not a dotted one).
+function addOutline(scene, key) {
+  const tex = scene.textures.get(key);
+  const canvas = tex.getSourceImage();
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const ctx = canvas.getContext('2d');
+  const { width: w, height: h } = canvas;
+  const img = ctx.getImageData(0, 0, w, h);
+  const src = img.data;
+  const out = new Uint8ClampedArray(src);
+  const solid = (x, y) => x >= 0 && y >= 0 && x < w && y < h && src[(y * w + x) * 4 + 3] >= 200;
+  const ink = [(INK >> 16) & 0xff, (INK >> 8) & 0xff, INK & 0xff];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const a = src[i + 3] / 255;
+      if (a >= 200 / 255) continue;
+      if (!(solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1))) continue;
+      // Existing pixel composited over the ink.
+      const inkA = OUTLINE_ALPHA * (1 - a);
+      const outA = a + inkA;
+      for (let c = 0; c < 3; c++) out[i + c] = (src[i + c] * a + ink[c] * inkA) / outA;
+      out[i + 3] = outA * 255;
+    }
+  }
+  ctx.putImageData(new ImageData(out, w, h), 0, 0);
+  tex.refresh();
 }
 
 function drawPlayer(g, pose) {

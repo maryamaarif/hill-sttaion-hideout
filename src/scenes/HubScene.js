@@ -5,6 +5,7 @@ import { drawRoom } from '../art/Room.js';
 import SaveSystem from '../systems/SaveSystem.js';
 import AudioSystem from '../systems/AudioSystem.js';
 import { newLevelRunFromSave } from '../systems/RunState.js';
+import SettingsPanel from '../ui/SettingsPanel.js';
 
 const ROOM_AREA = { x: 16, y: 58, w: 560, h: 466 };
 const PANEL = { x: 592, y: 58, w: 352, h: 420 };
@@ -20,7 +21,7 @@ const TABS = [
 // upgrades are bought; the shop sells room upgrades, items for the next level and
 // extra hiding places. "Next level" starts the next level with everything bought.
 //
-// Keys: ← → tabs, ↑ ↓ choose, ENTER buy, N next level, M menu, S sound.
+// Keys: ← → tabs, ↑ ↓ choose, ENTER buy, N next level, ESC menu (M mutes anywhere).
 export default class HubScene extends Phaser.Scene {
   constructor() {
     super('HubScene');
@@ -33,7 +34,9 @@ export default class HubScene extends Phaser.Scene {
     this.level = data.level ?? this.save.highestLevel;
     this.tab = 0;
     this.row = 0;
-    this.cameras.main.setBackgroundColor('#2b2238');
+    this.cameras.main.setBackgroundColor(UI.screenBg);
+    this.audio.playMusic('room');
+    this.settingsPanel = new SettingsPanel(this);
     this.cameras.main.fadeIn(400);
 
     this.add.text(16, 14, 'Your room at the guest house', textStyle(26)).setOrigin(0, 0);
@@ -46,15 +49,16 @@ export default class HubScene extends Phaser.Scene {
     this.buildButtons();
     this.refresh();
 
+    // Keys are ignored while the settings overlay is open.
     const kb = this.input.keyboard;
-    kb.on('keydown-LEFT', () => this.setTab(this.tab - 1));
-    kb.on('keydown-RIGHT', () => this.setTab(this.tab + 1));
-    kb.on('keydown-UP', () => this.setRow(this.row - 1));
-    kb.on('keydown-DOWN', () => this.setRow(this.row + 1));
-    kb.on('keydown-ENTER', () => this.buy());
-    kb.on('keydown-N', () => this.nextLevel());
-    kb.on('keydown-M', () => this.scene.start('MenuScene'));
-    kb.on('keydown-S', () => this.toggleSound());
+    const on = (key, fn) => kb.on(`keydown-${key}`, () => !this.settingsPanel.blocking && fn());
+    on('LEFT', () => this.setTab(this.tab - 1));
+    on('RIGHT', () => this.setTab(this.tab + 1));
+    on('UP', () => this.setRow(this.row - 1));
+    on('DOWN', () => this.setRow(this.row + 1));
+    on('ENTER', () => this.buy());
+    on('N', () => this.nextLevel());
+    on('ESC', () => this.scene.start('MenuScene'));
   }
 
   drawRoom() {
@@ -104,8 +108,8 @@ export default class HubScene extends Phaser.Scene {
       bg.setInteractive({ useHandCursor: true }).on('pointerdown', action);
       return text;
     };
-    make(PANEL.x + 56, 104, 'Menu (M)', () => this.scene.start('MenuScene'));
-    this.soundLabel = make(PANEL.x + 172, 116, '', () => this.toggleSound());
+    make(PANEL.x + 56, 104, 'Menu (Esc)', () => this.scene.start('MenuScene'));
+    make(PANEL.x + 172, 116, 'Settings', () => this.settingsPanel.open());
     make(PANEL.x + 290, 124, `Level ${this.level} ▶ (N)`, () => this.nextLevel(), true);
   }
 
@@ -147,7 +151,6 @@ export default class HubScene extends Phaser.Scene {
     const have = owned.includes(e.key);
     this.desc.setText(`${e.desc}${have ? `\n${tab.owned}.` : ''}`);
     this.hint.setText(have ? '← → tabs   ↑ ↓ choose' : `ENTER to buy for ${e.cost} coins   ← → tabs`);
-    this.soundLabel.setText(this.save.settings.muted ? 'Sound: off (S)' : 'Sound: on (S)');
   }
 
   buy() {
@@ -165,14 +168,6 @@ export default class HubScene extends Phaser.Scene {
       this.drawRoom();
       this.cameras.main.flash(250, 255, 230, 180);
     }
-    this.refresh();
-  }
-
-  toggleSound() {
-    this.save = SaveSystem.update((d) => {
-      d.settings.muted = !d.settings.muted;
-    });
-    this.sound.mute = this.save.settings.muted;
     this.refresh();
   }
 

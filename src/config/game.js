@@ -107,6 +107,7 @@ export const CAMERA = {
 
 export const UI = {
   font: '"Trebuchet MS", Verdana, sans-serif',
+  screenBg: '#2b2238', // background of menu-style screens
   textColor: '#ffffff',
   strokeColor: '#3b2a20',
   bannerHoldMs: 1900,

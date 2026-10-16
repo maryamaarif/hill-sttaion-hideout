@@ -1,5 +1,5 @@
 import { createCommonTextures } from '../art/TextureFactory.js';
-import SaveSystem from '../systems/SaveSystem.js';
+import AudioSystem from '../systems/AudioSystem.js';
 
 // Builds shared textures and animations, then goes to the menu.
 export default class BootScene extends Phaser.Scene {
@@ -9,7 +9,7 @@ export default class BootScene extends Phaser.Scene {
 
   create() {
     createCommonTextures(this);
-    this.sound.mute = SaveSystem.load().settings.muted;
+    new AudioSystem(this); // sets up the shared audio graph, volumes and the M key
     this.scene.start('MenuScene');
   }
 }

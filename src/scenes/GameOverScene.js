@@ -19,7 +19,7 @@ export default class GameOverScene extends Phaser.Scene {
 
   create(data) {
     const { width: W, height: H } = this.scale;
-    this.cameras.main.setBackgroundColor('#2a2238');
+    this.cameras.main.setBackgroundColor(UI.screenBg);
     this.cameras.main.fadeIn(400);
 
     this.add.text(W / 2, H / 2 - 120, 'Out of lives', textStyle(48)).setOrigin(0.5);

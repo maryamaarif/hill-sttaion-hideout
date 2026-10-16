@@ -142,7 +142,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.jumpPressedAt = -Infinity;
       // Jumping on a ski-jump ramp is a launch: height comes from speed, not the jump.
       if (this.rampLaunch && this.body.velocity.x > 0) this.launch(-this.body.velocity.x * this.rampLaunch);
-      else this.setVelocityY(-this.seasonPhysics.jumpVelocity);
+      else {
+        this.setVelocityY(-this.seasonPhysics.jumpVelocity);
+        this.scene.events.emit('player-jump', this);
+      }
     }
     // Variable jump height: let go early for a short hop.
     if (this.jumping && !jumpHeld && !this.jumpCut && this.body.velocity.y < 0) {
@@ -313,6 +316,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.anims.stop();
     this.setTexture('player-crouch');
     this.setAlpha(0.6).setTint(0x8a96a8);
+    this.scene.events.emit('player-hide', this);
     if (spot.tuck) this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });
     this.scene.tweens.add({ targets: this, scaleY: 0.85, duration: 140, yoyo: true });
   }

@@ -25,6 +25,8 @@ Then open <http://localhost:8000>.
 | ↑ / W / Space | Jump (hold after a ski jump to glide) |
 | ↓ / S | Hide in a bush, flower bed, overhang or reeds (move or jump to leave); hold to dive when swimming |
 | Enter | Confirm on menus |
+| Esc | Pause and settings (music / sound effect volume) |
+| M | Mute or unmute, anywhere |
 
 ### What's playable
 
@@ -35,6 +37,7 @@ Then open <http://localhost:8000>.
 - Between seasons you see how many lives you carry forward and pick one perk for the next season (e.g. *Warm coat: less slip in Winter*).
 - Finishing Winter completes the level: lives turn into coins, then you return to your room. Spend coins on room upgrades (the room changes), items for the next level, and extra hiding places in the seasons. Press **N** in your room to start the next level, which is noticeably harder.
 - Progress is saved in your browser (localStorage). If storage is blocked, the game still works for the session.
+- All art is drawn in code and all music and sound is synthesised live with Web Audio: there are no asset files to download.
 - Every screen shows which key continues.
 
 ## Deploy to GitHub Pages

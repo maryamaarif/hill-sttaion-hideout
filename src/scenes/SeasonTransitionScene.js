@@ -43,7 +43,8 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     this.time.delayedCall(T.swapMs, () => {
       prevParticles.stop();
       emitter(this.next);
-      this.audio.play('whoosh');
+      this.audio.play('seasonChange');
+      this.audio.playMusic(this.next.music ?? this.next.key);
     });
 
     // Old icon spins away; new icon pops in.

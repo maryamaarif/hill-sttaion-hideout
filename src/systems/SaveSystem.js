@@ -8,7 +8,7 @@
 //   upgrades       room upgrade keys owned
 //   items          item keys bought for the next level (used up when it starts)
 //   hidingPlaces   hiding place keys unlocked (permanent)
-//   settings       { muted }
+//   settings       { muted, musicVolume, sfxVolume } (volumes 0..1)
 const KEY = 'hill-station-hideout-save-v1';
 
 const defaults = () => ({
@@ -17,7 +17,7 @@ const defaults = () => ({
   upgrades: [],
   items: [],
   hidingPlaces: [],
-  settings: { muted: false },
+  settings: { muted: false, musicVolume: 0.5, sfxVolume: 0.8 },
 });
 
 let memory = null; // fallback when localStorage is blocked

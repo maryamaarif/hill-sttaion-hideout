@@ -5,7 +5,7 @@
 //   noise     true = filtered white noise instead of an oscillator (freq = filter cutoff)
 
 export const AUDIO = {
-  sfxVolume: 0.35,
+  sfxVolume: 0.35, // base loudness of effects (the SFX slider scales this)
 };
 
 export const SFX = {
@@ -66,6 +66,32 @@ export const SFX = {
   launch: [
     { freq: 300, to: 900, type: 'triangle', start: 0, duration: 0.35, gain: 0.3 },
     { freq: 2500, to: 800, noise: true, start: 0, duration: 0.5, gain: 0.25 },
+  ],
+  // Jump: a quick upward blip.
+  jump: [{ freq: 360, to: 620, type: 'triangle', start: 0, duration: 0.09, gain: 0.22 }],
+  // Tucking into a hiding spot: a soft rustle.
+  hide: [{ freq: 2200, to: 700, noise: true, start: 0, duration: 0.18, gain: 0.3 }],
+  // An officer starts to notice you ("?").
+  suspect: [{ freq: 660, to: 760, type: 'sine', start: 0, duration: 0.12, gain: 0.2 }],
+  // Detected ("!"): sharp double sting.
+  alert: [
+    { freq: 1180, type: 'square', start: 0, duration: 0.07, gain: 0.22 },
+    { freq: 1580, type: 'square', start: 0.08, duration: 0.12, gain: 0.22 },
+  ],
+  // Half life gained: sparkly rising notes.
+  heart: [
+    { freq: 1319, type: 'sine', start: 0, duration: 0.08, gain: 0.3 },
+    { freq: 1760, type: 'sine', start: 0.06, duration: 0.08, gain: 0.3 },
+    { freq: 2637, type: 'sine', start: 0.12, duration: 0.18, gain: 0.25 },
+  ],
+  // One tick of the coin counter.
+  coin: [{ freq: 1760, to: 2100, type: 'square', start: 0, duration: 0.04, gain: 0.12 }],
+  // Season change: a rising sweep and a bright chord.
+  seasonChange: [
+    { freq: 2500, to: 600, noise: true, start: 0, duration: 0.8, gain: 0.25 },
+    { freq: 523, type: 'triangle', start: 0.35, duration: 0.6, gain: 0.25 },
+    { freq: 659, type: 'triangle', start: 0.45, duration: 0.6, gain: 0.25 },
+    { freq: 784, type: 'triangle', start: 0.55, duration: 0.7, gain: 0.25 },
   ],
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
