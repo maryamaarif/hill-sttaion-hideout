@@ -25,7 +25,9 @@ export default class MenuScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     const save = SaveSystem.load();
     const level = save.highestLevel;
-    new AudioSystem(this).playMusic('room');
+    const sound = new AudioSystem(this);
+    sound.playMusic('room');
+    sound.stopAmbience();
 
     // One backdrop (hills, guest house, trees) and particle emitter per season.
     this.seasons = SEASON_ORDER.map((season, i) => {

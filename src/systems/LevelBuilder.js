@@ -1,6 +1,7 @@
 import { DEPTH, UI } from '../config/game.js';
 import { createSeasonTextures } from '../art/TextureFactory.js';
 import { addArt } from '../art/Paint.js';
+import { PLATFORM_SURFACES } from '../config/audio.js';
 import {
   paintTerrain, paintCliffs, addWater, addSnag, addOverhead, addSign, addGoal, addHouseGoal,
 } from '../art/Terrain.js';
@@ -30,9 +31,10 @@ import { addActionHint } from '../ui/KeyIcons.js';
 //   keyHints     [{ x, y, actions }]     key icons shown next to an action (no words)
 //   trees, flowerBeds, signs, heatZones, police, extraPolice, goal
 
-function addSolid(scene, solids, x, y, w, h) {
+function addSolid(scene, solids, x, y, w, h, surface = null) {
   const zone = scene.add.zone(x + w / 2, y + h / 2, w, h);
   scene.physics.add.existing(zone, true);
+  zone.surface = surface; // footstep sound (config/audio.js STEPS)
   solids.push(zone);
 }
 
@@ -71,9 +73,10 @@ export default function buildLevel(scene, season) {
   }
   paintTerrain(scene, season, groundAt);
 
-  for (const { x, w, y = gy } of layout.ground) addSolid(scene, solids, x, y, w, H - y);
+  const ground = season.footsteps ?? 'grass';
+  for (const { x, w, y = gy, kind } of layout.ground) addSolid(scene, solids, x, y, w, H - y, kind === 'rock' ? 'gravel' : ground);
   for (const plat of layout.platforms ?? []) {
-    if (plat.solid !== false) addSolid(scene, solids, plat.x, plat.y, plat.w, plat.h);
+    if (plat.solid !== false) addSolid(scene, solids, plat.x, plat.y, plat.w, plat.h, PLATFORM_SURFACES[plat.kind] ?? 'wood');
   }
 
   // Water: drawn in front of the player so they sink into it. Rivers and streams
@@ -152,7 +155,15 @@ export default function buildLevel(scene, season) {
   // Merge the season's hurdle definitions with this layout's trigger lines.
   const hurdles = season.hurdles.map((h) => ({ ...h, ...layout.hurdles[h.key] }));
 
-  return { solids, hazards, obstacles, swimWaters, movers, hidingSpots, goalZone, hurdles, groundAt, keyHints, colorBlindOverlay };
+  // Footstep surface under the player: a moving platform is wood, otherwise the
+  // solid they stand on, otherwise (slopes) the season's ground.
+  const surfaceAt = (player) => {
+    if (player.carrier) return 'wood';
+    const b = player.body;
+    const under = solids.find((z) => Math.abs(z.body.top - b.bottom) < 6 && b.center.x >= z.body.left && b.center.x <= z.body.right);
+    return under?.surface ?? ground;
+  };
+  return { solids, hazards, obstacles, swimWaters, movers, hidingSpots, goalZone, hurdles, groundAt, surfaceAt, keyHints, colorBlindOverlay };
 }
 
 export { addTrigger, groundTopAt };

@@ -81,7 +81,7 @@ export default {
   },
   // ----- season rules you can see and hear (shared engine features) -----
   // Snow is quiet: a small noise ring...
-  noise: { radius: 50, color: 0xdbe8f5, sound: 'stepSnow', particle: 'snowflake', particleCount: 2, stepPx: 34 },
+  noise: { radius: 50, color: 0xdbe8f5, particle: 'snowflake', particleCount: 2, stepPx: 34 },
   // ...but you leave deep footprints that last, and police follow fresh trails.
   traces: { texture: 'footprint', tint: 0x6d86a0, alpha: 0.9, spacing: 26, lifeMs: 7000, followable: true },
   // Blizzard (inside layout.blizzardZones): view shrinks to a circle, cones shrink.
@@ -96,6 +96,16 @@ export default {
       { id: 'skier-1', skin: 0xe8b98f, hair: 0x2b2018, skis: 0xffd23f, layers: { top: { style: 'puffer', color: 0x82c86f, trim: 0xffffff }, bottom: { style: 'snowpants', color: 0x2f2f3a }, shoes: { style: 'snowBoots', color: 0x3a3a40, trim: 0xffffff }, hat: { style: 'beanie', color: 0xffd23f, trim: 0xffffff }, accessories: [{ style: 'goggles' }, { style: 'gloves', color: 0x2a2a2e }] } },
       { id: 'skier-2', skin: 0xc68c62, hair: 0x1a1410, skis: 0x2f6fd8, layers: { top: { style: 'puffer', color: 0xce93d8, trim: 0xffffff }, bottom: { style: 'snowpants', color: 0x34506e }, shoes: { style: 'snowBoots', color: 0x3a3a40, trim: 0xffffff }, hat: { style: 'beanie', color: 0xd94f4a, trim: 0xffffff }, accessories: [{ style: 'gloves', color: 0x2a2a2e }] } },
       { id: 'skier-3', skin: 0xf2c9a0, hair: 0xd9a441, skis: 0xd94f4a, layers: { top: { style: 'puffer', color: 0xff8c42, trim: 0xffffff }, bottom: { style: 'snowpants', color: 0x2f2f3a }, shoes: { style: 'snowBoots', color: 0x3a3a40, trim: 0xffffff }, accessories: [{ style: 'goggles' }, { style: 'gloves', color: 0x2a2a2e }] } },
+    ],
+  },
+  // Footstep sound on this season's ground (config/audio.js STEPS); quarry rock,
+  // platforms and moving platforms have their own surfaces.
+  footsteps: 'snow',
+  // Ambience (generated): howling wind, fiercer in the blizzard. Snow crunches
+  // underfoot (footsteps).
+  ambience: {
+    layers: [
+      { kind: 'wind', gain: 0.1, eventGain: 0.35, low: 300, high: 750, q: 1.5, howl: true },
     ],
   },
   // Lighting pass (art/Lighting.js): cool blue.

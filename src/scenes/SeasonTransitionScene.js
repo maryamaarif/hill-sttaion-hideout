@@ -46,6 +46,8 @@ export default class SeasonTransitionScene extends Phaser.Scene {
       emitter(this.next);
       this.audio.play('seasonChange');
       this.audio.playMusic(this.next.music ?? this.next.key);
+      // The soundscape crossfades with the scenery.
+      this.audio.playAmbience(this.next.key, this.next.ambience);
     });
 
     // Old icon spins away; new icon pops in.

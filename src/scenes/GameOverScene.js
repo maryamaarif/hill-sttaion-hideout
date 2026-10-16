@@ -5,6 +5,7 @@ import { UI } from '../config/game.js';
 import { SEASON_ORDER } from '../seasons/index.js';
 import { buildBackdrop } from '../art/Backdrop.js';
 import { addPanel } from '../ui/Panels.js';
+import AudioSystem from '../systems/AudioSystem.js';
 
 const MESSAGES = {
   caught: 'A plain-clothes officer recognised you.',
@@ -25,6 +26,10 @@ export default class GameOverScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale;
     this.cameras.main.setBackgroundColor(UI.screenBg);
     this.cameras.main.fadeIn(400);
+    // Quiet the season: no ambience, no tension layer.
+    const sound = new AudioSystem(this);
+    sound.stopAmbience();
+    sound.setTension(0);
     // The season where it ended, dimmed, behind a wooden board.
     const season = SEASON_ORDER.find((s) => s.key === data.seasonKey) ?? SEASON_ORDER[0];
     buildBackdrop(this, season, W).forEach((o) => o.depth > -20 && o.setDepth(-20));

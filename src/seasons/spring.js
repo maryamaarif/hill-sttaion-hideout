@@ -61,7 +61,7 @@ export default {
   },
   // ----- season rules you can see and hear (shared engine features) -----
   // Footsteps splash in the puddles: a medium noise ring; officers inside it turn to look.
-  noise: { radius: 95, color: 0x9fd3ff, sound: 'stepSplash', particle: 'droplet', particleCount: 4, stepPx: 34 },
+  noise: { radius: 95, color: 0x9fd3ff, particle: 'droplet', particleCount: 4, stepPx: 34 },
   // Wet footprints that dry within moments (a trail for you, police ignore them).
   traces: { texture: 'footprint', tint: 0x4f6478, alpha: 0.65, spacing: 24, lifeMs: 1600 },
   // Spring shower: officers open umbrellas and can't see as far for 10 s.
@@ -80,6 +80,17 @@ export default {
       { id: 'picnic-1', skin: 0xe8b98f, hair: 0x2b2018, layers: { top: { style: 'shirt', color: 0xf6b3cc, trim: 0xffffff }, bottom: { style: 'trousers', color: 0xe8e0cc }, shoes: { style: 'shoes', color: 0x8a5a3c }, hat: { style: 'sunHat', color: 0xf3e3c3, trim: 0xd94f4a } } },
       { id: 'picnic-2', skin: 0xc68c62, hair: 0x1a1410, layers: { top: { style: 'polo', color: 0x82c86f }, bottom: { style: 'jeans', color: 0x4a6a9a }, shoes: { style: 'sneakers', color: 0xffffff, trim: 0x2f6fd8 } } },
       { id: 'picnic-3', skin: 0xf2c9a0, hair: 0xb07a3a, layers: { top: { style: 'sweater', color: 0xfff176, trim: 0xffffff }, bottom: { style: 'trousers', color: 0x7a8a5a }, shoes: { style: 'shoes', color: 0x5a3a28 }, accessories: [{ style: 'camera' }] } },
+    ],
+  },
+  // Footstep sound on this season's ground (config/audio.js STEPS); quarry rock,
+  // platforms and moving platforms have their own surfaces.
+  footsteps: 'wetGrass',
+  // Ambience (generated): birdsong, and light rain that swells during the shower.
+  ambience: {
+    layers: [
+      { kind: 'birds', gain: 0.5, every: [0.7, 2.6], reverb: 0.4 },
+      { kind: 'rain', gain: 0.025, eventGain: 0.26, low: 900, high: 7000 },
+      { kind: 'drips', gain: 0.0001, eventGain: 0.45, every: [0.15, 0.5] },
     ],
   },
   // Lighting pass (art/Lighting.js): soft and fresh.

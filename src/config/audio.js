@@ -104,20 +104,6 @@ export const SFX = {
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
 
-  // Footsteps by season (season.noise.sound): how loud the ground is.
-  stepSplash: [
-    { freq: 2600, to: 900, noise: true, start: 0, duration: 0.09, gain: 0.22 },
-    { freq: 520, to: 260, type: 'sine', start: 0, duration: 0.06, gain: 0.08 },
-  ],
-  stepCrunch: [
-    { freq: 3800, noise: true, start: 0, duration: 0.05, gain: 0.2 },
-    { freq: 2400, noise: true, start: 0.04, duration: 0.05, gain: 0.14 },
-  ],
-  stepRustle: [
-    { freq: 5200, to: 2200, noise: true, start: 0, duration: 0.16, gain: 0.26 },
-    { freq: 3400, to: 1500, noise: true, start: 0.07, duration: 0.14, gain: 0.18 },
-  ],
-  stepSnow: [{ freq: 900, to: 500, noise: true, start: 0, duration: 0.08, gain: 0.08 }],
   // An officer heard something and turns to look.
   hear: [{ freq: 520, to: 620, type: 'triangle', start: 0, duration: 0.1, gain: 0.16 }],
   // A weather event begins (shower, heatwave, gust, blizzard).
@@ -126,4 +112,51 @@ export const SFX = {
     { freq: 392, type: 'triangle', start: 0.1, duration: 0.35, gain: 0.18 },
     { freq: 330, type: 'triangle', start: 0.3, duration: 0.45, gain: 0.18 },
   ],
+};
+
+// Footsteps by ground surface (AudioSystem.playStep, with random pitch and level).
+// The surface comes from what the player stands on: the season's ground
+// (season.footsteps), quarry rock, platform kinds (PLATFORM_SURFACES), or a moving
+// platform (wood). `grains` repeats a short burst at random offsets within `spread`
+// seconds, for crunches and crackles.
+export const STEPS = {
+  grass: [
+    { freq: 2600, to: 700, noise: true, start: 0, duration: 0.07, gain: 0.16 },
+    { freq: 130, to: 90, type: 'sine', start: 0, duration: 0.05, gain: 0.08 },
+  ],
+  // Spring: soft grass with puddle splashes.
+  wetGrass: [
+    { freq: 2400, to: 700, noise: true, start: 0, duration: 0.06, gain: 0.13 },
+    { freq: 3000, to: 1400, noise: true, filter: 'bandpass', q: 1.5, start: 0.01, duration: 0.11, gain: 0.2 },
+    { freq: 900, to: 1500, type: 'sine', start: 0.03, duration: 0.04, gain: 0.05 },
+  ],
+  // Summer quarry: crunching gravel.
+  gravel: [
+    { freq: 5200, noise: true, filter: 'highpass', start: 0, duration: 0.02, gain: 0.22, grains: 4, spread: 0.07 },
+    { freq: 1800, to: 600, noise: true, start: 0, duration: 0.05, gain: 0.08 },
+  ],
+  wood: [
+    { freq: 190, to: 120, type: 'sine', start: 0, duration: 0.07, gain: 0.2 },
+    { freq: 1000, to: 500, noise: true, filter: 'bandpass', q: 2, start: 0, duration: 0.05, gain: 0.14 },
+  ],
+  stone: [
+    { freq: 3200, noise: true, filter: 'highpass', start: 0, duration: 0.025, gain: 0.14 },
+    { freq: 260, to: 200, type: 'sine', start: 0, duration: 0.04, gain: 0.07 },
+  ],
+  // Fall: loud, crackly dry leaves.
+  leaves: [
+    { freq: 4600, to: 2600, noise: true, filter: 'bandpass', q: 1.2, start: 0, duration: 0.03, gain: 0.26, grains: 6, spread: 0.14 },
+    { freq: 1600, to: 500, noise: true, start: 0, duration: 0.1, gain: 0.08 },
+  ],
+  // Winter: compressing snow under boots.
+  snow: [
+    { freq: 1400, to: 700, noise: true, start: 0, duration: 0.04, gain: 0.16, grains: 3, spread: 0.06 },
+    { freq: 110, to: 80, type: 'sine', start: 0, duration: 0.06, gain: 0.06 },
+  ],
+};
+
+// Platform kinds → footstep surface (anything else uses the season's ground).
+export const PLATFORM_SURFACES = {
+  wood: 'wood', fence: 'wood', planter: 'wood', jetty: 'wood', crate: 'wood', log: 'wood',
+  stone: 'stone', bridge: 'stone', halt: 'stone', rock: 'gravel',
 };

@@ -97,7 +97,7 @@ export default {
   },
   // ----- season rules you can see and hear (shared engine features) -----
   // Gravel crunches: a noise ring a little bigger than Spring's.
-  noise: { radius: 105, color: 0xffe6a0, sound: 'stepCrunch', particle: 'dust', tint: 0xe8c890, particleCount: 4, stepPx: 30 },
+  noise: { radius: 105, color: 0xffe6a0, particle: 'dust', tint: 0xe8c890, particleCount: 4, stepPx: 30 },
   // No traces on dry rock and sand.
   traces: null,
   // Heatwave: for 10 s stamina drains twice as fast standing in the sun, and even
@@ -118,6 +118,18 @@ export default {
       { id: 'swim-1', skin: 0xe8b98f, hair: 0x2b2018, layers: { top: { style: 'swimsuit', color: 0xff5e78 }, bottom: { style: 'swim', color: 0xff5e78 }, shoes: { style: 'bare' } } },
       { id: 'swim-2', skin: 0xb07a52, hair: 0x1a1410, layers: { bottom: { style: 'swim', color: 0x2f6fd8 }, shoes: { style: 'bare' }, hat: { style: 'cap', color: 0xffffff } } },
       { id: 'swim-3', skin: 0xf2c9a0, hair: 0xd9a441, layers: { top: { style: 'tshirt', color: 0x6ec6ff }, bottom: { style: 'shorts', color: 0xffd23f }, shoes: { style: 'flipflops' }, hat: { style: 'sunHat', color: 0xf6e7c1, trim: 0x2f6fd8 } } },
+    ],
+  },
+  // Footstep sound on this season's ground (config/audio.js STEPS); quarry rock,
+  // platforms and moving platforms have their own surfaces.
+  footsteps: 'grass',
+  // Ambience (generated): cicadas (louder in the heatwave) and water lapping.
+  ambience: {
+    layers: [
+      { kind: 'cicadas', gain: 0.035, eventGain: 0.1, freq: 5200, pulse: 38, swellSec: 9 },
+      { kind: 'water', gain: 0.07, cutoff: 500, rate: 0.22 },
+      { kind: 'laps', gain: 0.05, every: [2, 4.5] },
+      { kind: 'birds', gain: 0.12, every: [4, 9], species: ['chirp'], reverb: 0.3 },
     ],
   },
   // Lighting pass (art/Lighting.js): bright and saturated.

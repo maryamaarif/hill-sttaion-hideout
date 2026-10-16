@@ -7,9 +7,9 @@ import { DEPTH } from '../config/game.js';
 //   Spring puddles splash, Summer gravel crunches, Fall leaves rustle (big ring),
 //   Winter snow is quiet (small ring) but leaves deep footprints (see TraceSystem).
 //
-// season.noise: { radius, color, sound, particle?, tint?, stepPx, onSkis? }
+// season.noise: { radius, color, particle?, tint?, stepPx, onSkis? }
 //   radius    ring radius in px at full running speed (smaller when moving slowly)
-//   sound     SFX key played on each step (config/audio.js)
+//   (the footstep sound comes from the ground surface: season.footsteps etc.)
 //   particle  texture kicked up at the feet on each step (droplet, dust, leaf, ...)
 //   stepPx    distance between steps
 //   onSkis    true = skiing makes noise too (default: no)
@@ -38,12 +38,15 @@ export default class NoiseSystem {
   }
 
   // Updates the ring and returns the officers who heard a step this frame.
-  update(time, player, police, { quiet = false, runSpeed = 220 } = {}) {
+  //   quiet    no noise (walking inside a crowd): steps still sound, nobody hears
+  //   surface  footstep sound for the ground under the player (config/audio.js STEPS)
+  update(time, player, police, { quiet = false, runSpeed = 220, surface = null } = {}) {
     if (!this.config) return [];
     const cfg = this.config;
     const vx = Math.abs(player.body.velocity.x);
-    const making = !quiet && player.onGround && !player.hidden && !player.swimming && player.visible
+    const stepping = player.onGround && !player.hidden && !player.swimming && player.visible
       && vx > 40 && (!player.skiing || cfg.onSkis);
+    const making = stepping && !quiet;
     const target = making ? cfg.radius * Math.min(1, Math.max(0.45, vx / runSpeed)) : 0;
     // Ease the ring in and out so it never pops.
     this.radius += (target - this.radius) * 0.2;
@@ -51,19 +54,21 @@ export default class NoiseSystem {
 
     const heard = [];
     const feet = player.body.bottom;
-    if (making && (this.lastStepX === null || Math.abs(player.x - this.lastStepX) >= cfg.stepPx)) {
+    if (stepping && (this.lastStepX === null || Math.abs(player.x - this.lastStepX) >= cfg.stepPx)) {
       this.lastStepX = player.x;
-      if (cfg.sound) this.audio?.play(cfg.sound);
+      if (surface) this.audio?.playStep(surface);
       this.kick?.explode(cfg.particleCount ?? 3, player.x, feet - 2);
-      this.pulse = { t: time };
-      for (const officer of police) {
-        const dx = Math.abs(officer.x - player.x);
-        const dy = Math.abs(officer.groundY - feet);
-        // Hearing uses the real noise radius; only the drawn ring eases in and out.
-        if (dx <= target && dy < 140 && officer.hear(player.x, time)) heard.push(officer);
+      if (making) {
+        this.pulse = { t: time };
+        for (const officer of police) {
+          const dx = Math.abs(officer.x - player.x);
+          const dy = Math.abs(officer.groundY - feet);
+          // Hearing uses the real noise radius; only the drawn ring eases in and out.
+          if (dx <= target && dy < 140 && officer.hear(player.x, time)) heard.push(officer);
+        }
       }
     }
-    if (!making) this.lastStepX = null;
+    if (!stepping) this.lastStepX = null;
     this.draw(time, player.x, feet);
     return heard;
   }

@@ -61,6 +61,7 @@ export default class HubScene extends Phaser.Scene {
     this.scroll = 0;
     this.cameras.main.setBackgroundColor(UI.screenBg);
     this.audio.playMusic('room');
+    this.audio.stopAmbience();
     this.settingsPanel = new SettingsPanel(this);
     this.cameras.main.fadeIn(400);
 

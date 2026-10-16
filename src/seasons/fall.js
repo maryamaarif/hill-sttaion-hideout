@@ -67,7 +67,7 @@ export default {
   },
   // ----- season rules you can see and hear (shared engine features) -----
   // Dry leaves rustle loudly: the biggest noise ring of the year.
-  noise: { radius: 165, color: 0xffb060, sound: 'stepRustle', particle: 'leaf', tint: [0xe8692a, 0xc8401e, 0xf2b234], particleCount: 5, particleScale: 1, stepPx: 30 },
+  noise: { radius: 165, color: 0xffb060, particle: 'leaf', tint: [0xe8692a, 0xc8401e, 0xf2b234], particleCount: 5, particleScale: 1, stepPx: 30 },
   // Leaves scattered behind you as you walk.
   traces: { texture: 'leaf', tint: [0xe8692a, 0xc8401e, 0xf2b234, 0xd98a2b], alpha: 0.95, spacing: 26, lifeMs: 4000, scatter: true },
   // Wind gust (timing in `wind`): leaves blow off the piles, revealing hidden pits
@@ -83,6 +83,17 @@ export default {
       { id: 'passenger-1', skin: 0xe8b98f, hair: 0x5a3a28, layers: { top: { style: 'coat', color: 0x6e4a2a, trim: 0xd9a441 }, bottom: { style: 'trousers', color: 0x3a2e28 }, shoes: { style: 'shoes', color: 0x1c1410 }, hat: { style: 'fedora', color: 0x3a2e28, trim: 0x1c1410 } } },
       { id: 'passenger-2', skin: 0xc68c62, hair: 0x1a1410, layers: { top: { style: 'sweater', color: 0x7a1f2b, trim: 0xf2b234 }, bottom: { style: 'corduroy', color: 0x5a4636 }, shoes: { style: 'ankleBoots', color: 0x2a1c14 }, accessories: [{ style: 'scarf', color: 0xf2b234 }] } },
       { id: 'passenger-3', skin: 0xf2c9a0, hair: 0x8a5a34, layers: { top: { style: 'trench', color: 0x9a8a6a }, bottom: { style: 'trousers', color: 0x4a4a52 }, shoes: { style: 'shoes', color: 0x2a2a2e }, hat: { style: 'beanie', color: 0xc8401e, trim: 0xf2b234 } } },
+    ],
+  },
+  // Footstep sound on this season's ground (config/audio.js STEPS); quarry rock,
+  // platforms and moving platforms have their own surfaces.
+  footsteps: 'leaves',
+  // Ambience (generated): wind (louder in a gust) and a distant train whistle.
+  ambience: {
+    layers: [
+      { kind: 'wind', gain: 0.08, eventGain: 0.3, low: 250, high: 900, q: 1.2 },
+      { kind: 'whistle', gain: 0.12, every: [16, 28], reverb: 0.9, notes: [523, 659] },
+      { kind: 'birds', gain: 0.08, every: [6, 12], species: ['chirp'], reverb: 0.4 },
     ],
   },
   // Lighting pass (art/Lighting.js): warm golden hour.

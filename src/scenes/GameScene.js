@@ -217,8 +217,12 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('police-hear', () => this.audio.play('hear'));
     this.events.on('weather-change', (event, state) => {
       if (state === 'active') this.audio.play('weather');
+      this.audio.setAmbienceEvent(state === 'active');
     });
     this.audio.playMusic(this.season.music ?? this.season.key);
+    // Layered season soundscape (season.ambience); swells during the weather event.
+    this.audio.playAmbience(this.season.key, this.season.ambience);
+    this.audio.setAmbienceEvent(false);
 
     // ESC or P: pause menu (Resume, Restart season, Settings, Quit to menu).
     this.paused = false;
@@ -349,7 +353,13 @@ export default class GameScene extends Phaser.Scene {
     this.traces.update(time, player);
     const clues = this.traces.clues();
     // Footsteps: officers inside the season's noise ring turn to look.
-    if (playing) this.noise.update(time, player, this.police, { quiet: player.inCrowd, runSpeed: this.season.physics.runSpeed });
+    if (playing) {
+      this.noise.update(time, player, this.police, {
+        quiet: player.inCrowd,
+        runSpeed: this.season.physics.runSpeed,
+        surface: this.level.surfaceAt(player),
+      });
+    }
     // Weather event: a shower shrinks police cones (umbrellas), a heatwave drains
     // stamina; gusts and the blizzard are driven by their own systems.
     this.weather.update(time, player, {
@@ -364,6 +374,10 @@ export default class GameScene extends Phaser.Scene {
       officer.visibility = baseVisibility * this.blizzard.visibilityAt(officer.x) * this.weather.visibility;
       return officer.update(time, delta, player, playing, blockers, clues);
     });
+    // Tension music: rises while any officer's meter is filling, fades once hidden.
+    const watching = this.police.filter((o) => o.seeing || o.detection > 0);
+    const meter = Math.max(0, ...this.police.map((o) => o.detection));
+    this.audio.setTension(!playing || player.hidden || !watching.length ? 0 : 0.35 + 0.65 * meter);
     const heat = playing ? this.heat.update(dt, player, Boolean(spot), this.weather.heat) : null;
     const cold = playing ? this.cold.update(dt, player, Boolean(spot)) : null;
     this.meters.update(player, [

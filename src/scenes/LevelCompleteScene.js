@@ -27,6 +27,7 @@ export default class LevelCompleteScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(UI.screenBg);
     const audio = new AudioSystem(this);
     audio.playMusic('room');
+    audio.stopAmbience();
     let lastTick = 0;
     this.cameras.main.fadeIn(500);
     // Safe back at the guest house: the snowy evening outside, warm light within.
