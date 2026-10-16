@@ -12,7 +12,51 @@ export default {
   layout,
   physics: { gravity: 1250, runSpeed: 225, jumpVelocity: 540, friction: 1.0 },
   visibility: 1.0,
-  police: { patrolSpeed: 62, visionLength: 190, visionAngleDeg: 40, detectionTime: 1.8, pauseMs: 1300 },
+  police: {
+    patrolSpeed: 62, visionLength: 190, visionAngleDeg: 40, detectionTime: 1.8, pauseMs: 1300,
+    disguise: 'beach', // beachgoers with towels
+  },
+  wardrobe: {
+    // Light clothes: the fastest run of the year.
+    outfit: {
+      id: 'summer',
+      name: 'Tee, shorts & sun hat',
+      blurb: 'Light clothes: fastest run of the year',
+      effects: [{ path: 'physics.runSpeed', mul: 1.1 }],
+      layers: {
+        top: { style: 'tshirt', color: 0xff8c42, trim: 0xffffff },
+        bottom: { style: 'shorts', color: 0x2f8fd8 },
+        shoes: { style: 'sneakers', color: 0xffffff, trim: 0xd94f4a },
+        hat: { style: 'sunHat', color: 0xf2d77e, trim: 0xd94f4a },
+        accessories: [{ style: 'sunglasses', color: 0x1e1e22 }],
+      },
+    },
+    variants: [
+      { id: 'summer-tropical', name: 'Tropical tee', cost: 80, layers: { top: { color: 0x37c4b0, trim: 0xffd23f }, bottom: { color: 0xf2b234 } } },
+      {
+        id: 'summer-camo',
+        name: 'Sand camouflage',
+        camo: true,
+        cost: 150,
+        layers: { top: { color: 0xdcb46a, trim: 0xa98140 }, bottom: { color: 0xa98140 }, hat: { color: 0xecc987, trim: 0xa98140 } },
+        effects: [{ path: 'police.detectionTime', mul: 1.12 }],
+      },
+    ],
+    // Automatic changes for the water hurdles.
+    swaps: {
+      canoe: { layers: { top: { style: 'lifejacket', color: 0xff6a00, trim: 0x3b2a20 } } },
+      swim: {
+        layers: {
+          top: { style: 'swimsuit', color: 0x2f8fd8 },
+          bottom: { style: 'swim', color: 0x2f8fd8 },
+          shoes: { style: 'bare' },
+          hat: null,
+          accessories: [{ style: 'goggles', color: 0x6ec6ff }],
+        },
+      },
+    },
+    puff: { texture: 'sparkle' },
+  },
   heat: { staminaSeconds: 6, regenPerSec: 0.45, warnAt: 0.45, glareAlpha: 0.07 },
   swim: {
     breathSeconds: 6,

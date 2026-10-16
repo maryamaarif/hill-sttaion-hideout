@@ -8,6 +8,7 @@
 //   upgrades       room upgrade keys owned
 //   items          item keys bought for the next level (used up when it starts)
 //   hidingPlaces   hiding place keys unlocked (permanent)
+//   ownedOutfits   shop outfit ids bought; equippedOutfits { seasonKey: outfitId }
 //   settings       { muted, musicVolume, sfxVolume, shake, colorBlind, easy, controls }
 //                  (see systems/Settings.js)
 const KEY = 'hill-station-hideout-save-v1';
@@ -30,8 +31,11 @@ const defaults = () => ({
       right: ['RIGHT', 'D'],
       jump: ['SPACE', 'UP', 'W'],
       hide: ['DOWN', 'S'],
+      glide: ['UP', 'W'],
     },
   },
+  ownedOutfits: [],
+  equippedOutfits: {},
 });
 
 let memory = null; // fallback when localStorage is blocked
@@ -49,7 +53,8 @@ export default class SaveSystem {
     const data = { ...base, ...(stored ?? {}) };
     data.settings = { ...base.settings, ...(stored?.settings ?? {}) };
     data.settings.controls = { ...base.settings.controls, ...(stored?.settings?.controls ?? {}) };
-    for (const list of ['upgrades', 'items', 'hidingPlaces']) {
+    if (typeof data.equippedOutfits !== 'object' || !data.equippedOutfits) data.equippedOutfits = {};
+    for (const list of ['upgrades', 'items', 'hidingPlaces', 'ownedOutfits']) {
       if (!Array.isArray(data[list])) data[list] = [];
     }
     return data;

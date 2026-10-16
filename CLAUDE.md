@@ -86,8 +86,19 @@ Player meters (stamina and breath) float above the player's head only while they
 
 **Seasons must change the RULES, not just the visuals.** Movement, friction, visibility, hazards and hiding spots differ per season. Each season's config file in `src/seasons/` declares these differences.
 
+### Seasonal wardrobe (clothes change the rules)
+- The player is a **layered character** (`src/art/Character.js`): body, bottom, shoes, top, accessories, hat. Each layer has drawers per style and follows the same pose geometry, so every outfit has every pose: idle, run (walk1/walk2), jump, fall, crouch/hide, caught, ski, skiAir, glide. An outfit is baked to `pl-<outfitId>-<pose>` textures; changing clothes just switches the prefix.
+- Outfits are **data in each season config** (`wardrobe`): `outfit` (default), `variants` (shop), `swaps` (per-hurdle changes), `puff` (particles for the change). `resolveOutfit` in `src/systems/Wardrobe.js` merges them.
+  - **Spring**: raincoat, jeans, rubber boots, umbrella. Hold the glide key (↑) in the air to float (`ability: 'umbrella'`). Rain showers (`weather.rain`) shorten police vision.
+  - **Summer**: t-shirt, shorts, sneakers, sun hat, sunglasses: fastest run (`effects`). Swaps to a life jacket on the canoe hurdle and swimsuit + goggles on the swim.
+  - **Fall**: knit sweater, scarf, corduroys, ankle boots: in front of trees / leaf piles police detect 20% slower (`foliage`), HUD shows BLENDING IN.
+  - **Winter**: puffer, beanie, gloves, snow boots (+ skis on the ski hurdles): slower on foot, but the cold meter (`cold`, `layout.coldZones`, `layout.warmSpots`) drains half as fast. Hiding spots and warm windows refill it.
+- Outfit `effects` use the same dotted-path effects as perks and items.
+- `SeasonTransitionScene` shows the guest spinning out of the old season's outfit into the new one with a puff of the new season's particles.
+- Shop (Outfits tab): per season a colour variant and a **Camouflage** outfit (police detection time ×1.12). Saved as `ownedOutfits` and `equippedOutfits { season: id }`; the room's guest previews the selected outfit.
+
 ### Police
-- **Plain-clothes officers** in ordinary clothes (polo shirt, slacks). Their consistent tell in every season is **black sunglasses with a white glint**: keep it on any seasonal outfit so players learn to spot them.
+- **Plain-clothes officers in seasonal disguises** (`police.disguise` in each season config): tourists with cameras (Spring), beachgoers with towels (Summer), train passengers with newspapers (Fall), skiers (Winter). The **tell never changes: mirrored sunglasses and an earpiece with a coiled wire**. Keep it on any new disguise so careful players learn to spot them.
 - Each officer walks a **patrol route** between two x positions, pauses at each end, and turns around. Routes live in the season layout (`police`, plus `extraPolice` that is added one per `policeCountBonus` from level 2 on). A route can have `activateX`: the officer waits facing `waitFacing` until the player passes that x, which is how a teaching moment is staged.
 - A **semi-transparent vision cone** shows in front of each officer. While the player is inside it and not hidden, a **detection meter** above the officer fills (yellow **?** then red **!** at `POLICE.alarmAt`), and the officer stops to stare. When it is full, the player is caught. It drains when the player is out of sight.
 - Officer speed, cone length and detection time = **season config × level multipliers** (`DifficultySystem.policeSettings`). Cone length is also multiplied by the season's `visibility`. Shared behaviour constants are in `POLICE` in `src/config/game.js`.
@@ -112,7 +123,7 @@ Player meters (stamina and breath) float above the player's head only while they
 - **Play layer** (player, police, hiding spots, vehicles, trees, props) has a **soft 1px outline in the shared ink** `INK = 0x3b2a20` (added automatically by `TextureFactory` to textures whose key matches `OUTLINED`). The **parallax background is flat with no outline**, so it reads as distance.
 - **Each season has its own palette** in its season config (`palette`); the shapes, proportions and line style are shared. New textures draw from the palette, never hard-coded season colours.
 - **UI** uses the same ink for panel borders and text strokes, the `UI.font`, cream panels `0xfff4e6`, gold highlight `0xffd54f`, and `UI.screenBg` behind menu-style screens. Text uses `textStyle()` from `src/ui/Hud.js`.
-- The player always wears the navy coat, red scarf and brown hat; police always wear the sunglasses.
+- The player's own (home) look is the navy coat, red scarf and brown hat (room, menus); in the seasons they wear the season outfit. Police always keep the mirrored sunglasses and earpiece.
 
 ### Audio (Web Audio only, no files)
 - `src/systems/AudioSystem.js`: one shared audio graph (master → music / SFX gains), so music continues across scenes and crossfades when the track changes.

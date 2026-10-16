@@ -15,7 +15,45 @@ export default {
   layout,
   physics: { gravity: 1250, runSpeed: 210, jumpVelocity: 530, friction: 0.22 },
   visibility: 1.0,
-  police: { patrolSpeed: 55, visionLength: 200, visionAngleDeg: 40, detectionTime: 1.6, pauseMs: 1300 },
+  police: {
+    patrolSpeed: 55, visionLength: 200, visionAngleDeg: 40, detectionTime: 1.6, pauseMs: 1300,
+    disguise: 'skier', // skiers
+  },
+  // Cold meter (layout.coldZones): drains out in the open, refills in hiding spots
+  // and near warm windows (layout.warmSpots). Empty = too cold (−1 life).
+  cold: { seconds: 35, refillPerSec: 0.3, warnAt: 0.35 },
+  wardrobe: {
+    // Heavy winter clothes: slower on foot, but the cold takes twice as long.
+    outfit: {
+      id: 'winter',
+      name: 'Puffer & beanie',
+      blurb: 'Slower on foot, but warm in the cold',
+      skis: 0x2f6fd8,
+      effects: [
+        { path: 'physics.runSpeed', mul: 0.9 },
+        { path: 'cold.seconds', mul: 2 },
+      ],
+      layers: {
+        top: { style: 'puffer', color: 0x2f6fd8, trim: 0xffffff },
+        bottom: { style: 'snowpants', color: 0x3b3f4a },
+        shoes: { style: 'snowBoots', color: 0x5e4634, trim: 0xffffff },
+        hat: { style: 'beanie', color: 0xd94f4a, trim: 0xffffff },
+        accessories: [{ style: 'gloves', color: 0xf2b234 }],
+      },
+    },
+    variants: [
+      { id: 'winter-red', name: 'Red puffer', cost: 80, layers: { top: { color: 0xd94f4a }, hat: { color: 0x2f6fd8, trim: 0xffffff } } },
+      {
+        id: 'winter-camo',
+        name: 'Snow camouflage',
+        camo: true,
+        cost: 150,
+        layers: { top: { color: 0xf2f5f8, trim: 0xb8c6d4 }, bottom: { color: 0xdfe7ef }, hat: { color: 0xffffff, trim: 0xb8c6d4 }, accessories: [{ style: 'gloves', color: 0xdfe7ef }] },
+        effects: [{ path: 'police.detectionTime', mul: 1.12 }],
+      },
+    ],
+    puff: { texture: 'snowflake' },
+  },
   ski: {
     cruiseSpeed: 260,
     minSpeed: 150,

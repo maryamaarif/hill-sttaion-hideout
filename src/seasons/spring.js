@@ -10,7 +10,40 @@ export default {
   layout,
   physics: { gravity: 1250, runSpeed: 220, jumpVelocity: 530, friction: 1.0 },
   visibility: 1.0,
-  police: { patrolSpeed: 58, visionLength: 170, visionAngleDeg: 40, detectionTime: 2.0, pauseMs: 1500 },
+  police: {
+    patrolSpeed: 58, visionLength: 170, visionAngleDeg: 40, detectionTime: 2.0, pauseMs: 1500,
+    disguise: 'tourist', // tourists with cameras
+  },
+  // Rain showers: police can't see as far while it rains.
+  weather: { rain: { firstMs: 9000, everyMs: 22000, durationMs: 8000, policeVisibility: 0.85 } },
+  wardrobe: {
+    // Umbrella: hold the glide key (↑) in the air to float down slowly.
+    outfit: {
+      id: 'spring',
+      name: 'Raincoat & boots',
+      blurb: 'Umbrella: hold ↑ in the air to float',
+      ability: 'umbrella',
+      layers: {
+        top: { style: 'raincoat', color: 0xf2c14e, trim: 0x3b6ea5 },
+        bottom: { style: 'jeans', color: 0x4a6fa5 },
+        shoes: { style: 'boots', color: 0x2f8a3a },
+        hat: null,
+        accessories: [{ style: 'umbrella', color: 0xd94f4a }],
+      },
+    },
+    variants: [
+      { id: 'spring-sky', name: 'Sky-blue raincoat', cost: 80, layers: { top: { color: 0x6ec6ff, trim: 0xf2c14e }, accessories: [{ style: 'umbrella', color: 0xf6b3cc }] } },
+      {
+        id: 'spring-camo',
+        name: 'Hedge camouflage',
+        camo: true,
+        cost: 150,
+        layers: { top: { color: 0x5fae5e, trim: 0x37702a }, bottom: { color: 0x4a6a3a }, shoes: { color: 0x37702a }, accessories: [{ style: 'umbrella', color: 0x5fae5e }] },
+        effects: [{ path: 'police.detectionTime', mul: 1.12 }],
+      },
+    ],
+    puff: { texture: 'petal' },
+  },
   hidingSpots: ['bush', 'flowers'],
   hurdles: [
     { key: 'meadow', name: 'Meadow Walk' },

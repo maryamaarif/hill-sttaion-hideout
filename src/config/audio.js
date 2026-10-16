@@ -93,6 +93,14 @@ export const SFX = {
     { freq: 659, type: 'triangle', start: 0.45, duration: 0.6, gain: 0.25 },
     { freq: 784, type: 'triangle', start: 0.55, duration: 0.7, gain: 0.25 },
   ],
+  // Umbrella opening (Spring outfit).
+  umbrella: [{ freq: 900, to: 400, noise: true, start: 0, duration: 0.18, gain: 0.3 }],
+  // Outfit change: a quick swish and sparkle.
+  outfit: [
+    { freq: 3000, to: 800, noise: true, start: 0, duration: 0.3, gain: 0.25 },
+    { freq: 1047, type: 'sine', start: 0.15, duration: 0.12, gain: 0.2 },
+    { freq: 1568, type: 'sine', start: 0.24, duration: 0.16, gain: 0.2 },
+  ],
   // Menu selection.
   select: [{ freq: 880, type: 'sine', start: 0, duration: 0.08, gain: 0.3 }],
 };

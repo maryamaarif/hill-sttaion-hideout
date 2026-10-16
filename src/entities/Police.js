@@ -1,5 +1,7 @@
 import { DEPTH, POLICE, UI } from '../config/game.js';
 import Settings from '../systems/Settings.js';
+import { buildPoliceLook } from '../art/Character.js';
+import { addOutline } from '../art/TextureFactory.js';
 
 const DEG = Math.PI / 180;
 
@@ -44,7 +46,11 @@ export default class Police {
     this.visibility = visibility;
 
     this.cone = scene.add.graphics().setDepth(DEPTH.cone);
-    this.idleTexture = route.skis ? 'police-ski' : 'police-idle';
+    // Seasonal disguise (tourist, beachgoer, passenger, skier); the sunglasses and
+    // earpiece tell is the same on every look.
+    this.look = settings.disguise ?? 'plain';
+    buildPoliceLook(scene, this.look, addOutline);
+    this.idleTexture = `police-${this.look}-${route.skis ? 'ski' : 'idle'}`;
     this.sprite = scene.add.sprite(0, groundY, this.idleTexture).setOrigin(0.5, 1).setDepth(DEPTH.police);
     this.meter = scene.add.graphics().setDepth(DEPTH.popup);
     this.icon = scene.add
@@ -142,7 +148,8 @@ export default class Police {
         this.dir = this.walkDir;
       }
       this.seeing = this.canSee(player, time, blockers);
-      const rate = dt / this.settings.detectionTime;
+      // player.detectionScale < 1 = harder to notice (e.g. blending into autumn foliage).
+      const rate = (dt / this.settings.detectionTime) * (player.detectionScale ?? 1);
       const before = this.detection;
       this.detection = this.seeing
         ? Math.min(1, this.detection + rate)
@@ -159,7 +166,7 @@ export default class Police {
     let moving = false;
     if (!halted) moving = this.move(time, dt);
 
-    if (moving && !this.route.skis) this.sprite.anims.play('police-walk', true);
+    if (moving && !this.route.skis) this.sprite.anims.play(`police-walk-${this.look}`, true);
     else {
       this.sprite.anims.stop();
       this.sprite.setTexture(this.idleTexture);

@@ -1,79 +1,15 @@
+import { buildOutfit, buildPoliceLook, HOME_OUTFIT } from './Character.js';
+
 // Every sprite is drawn in code with Graphics and baked into a texture once.
 // Common textures (player, hearts, particles) are made in BootScene;
 // season textures (trees, bushes) are made per season from its palette.
-
-export const PLAYER_FRAME = { width: 32, height: 48 };
-
-const PLAYER_COLORS = {
-  hat: 0x5a3a28,
-  hatBand: 0x2f1f16,
-  skin: 0xf2c9a0,
-  eye: 0x2b2b2b,
-  scarf: 0xd94f4a,
-  coat: 0x34506e,
-  coatDark: 0x253b54,
-  button: 0xe8c66a,
-  legs: 0x2e2e36,
-  shoes: 0x1c1410,
-};
-
-// Leg rectangles [x, y, w, h] per pose; shoes are drawn at each leg's foot.
-const LEG_POSES = {
-  idle: [[12, 39, 4, 7], [17, 39, 4, 7]],
-  walk1: [[9, 38, 4, 7], [19, 38, 4, 7]],
-  walk2: [[13, 39, 4, 7], [16, 38, 4, 6]],
-  jump: [[10, 37, 4, 6], [18, 39, 4, 5]],
-  crouch: [[8, 43, 6, 3], [18, 43, 6, 3]],
-};
-
-export const POLICE_FRAME = { width: 32, height: 50 };
-
-// Plain-clothes officer: ordinary polo shirt and slacks. The tell that never
-// changes between seasons is the black sunglasses with a white glint.
-const POLICE_COLORS = {
-  hair: 0x2b2018,
-  skin: 0xd9a77e,
-  glasses: 0x111111,
-  glint: 0xffffff,
-  shirt: 0xe0a83a,
-  shirtDark: 0xb98428,
-  collar: 0xf6e7c1,
-  trousers: 0x7a5c44,
-  shoes: 0x2a2a2a,
-};
-
-const POLICE_LEGS = {
-  idle: [[12, 40, 4, 8], [17, 40, 4, 8]],
-  walk1: [[9, 40, 4, 8], [19, 40, 4, 8]],
-  walk2: [[13, 40, 4, 8], [16, 40, 4, 7]],
-};
-
-function drawPolice(g, pose) {
-  const C = POLICE_COLORS;
-  for (const [x, y, w, h] of POLICE_LEGS[pose]) {
-    g.fillStyle(C.trousers).fillRect(x, y, w, h);
-    g.fillStyle(C.shoes).fillRect(x, y + h, w + 2, 2);
-  }
-  g.fillStyle(C.trousers).fillRect(10, 33, 12, 8); // hips
-  g.fillStyle(C.shirt).fillPoints([{ x: 10, y: 17 }, { x: 22, y: 17 }, { x: 23, y: 34 }, { x: 9, y: 34 }], true);
-  g.fillStyle(C.collar).fillRect(12, 16, 9, 3);
-  g.fillStyle(C.shirtDark).fillRect(16, 19, 4, 8); // sleeve
-  g.fillStyle(C.skin).fillRect(16, 27, 4, 6); // forearm
-  g.fillStyle(C.skin).fillRect(13, 14, 6, 3); // neck
-  g.fillStyle(C.skin).fillRect(11, 4, 11, 11); // head
-  g.fillStyle(C.hair).fillRect(10, 2, 12, 4);
-  g.fillRect(10, 5, 3, 5);
-  g.fillStyle(C.glasses).fillRect(14, 8, 9, 3);
-  g.fillRect(12, 8, 2, 1); // arm of the glasses
-  g.fillStyle(C.glint).fillRect(20, 8, 2, 1);
-}
 
 // ART STYLE: simple flat shapes, no gradients on sprites. Everything in the play
 // layer (characters, police, hiding spots, vehicles, trees) gets a soft 1px outline
 // in the shared ink colour; the parallax background stays flat with no outline, so
 // it reads as distance. UI uses the same ink for borders and text strokes.
 export const INK = 0x3b2a20;
-const OUTLINED = /^(player-|police-|mover-|train-|crossing-train|hide-|tree-)/;
+const OUTLINED = /^(pl-|police-|mover-|train-|crossing-train|hide-|tree-)/;
 const OUTLINE_ALPHA = 0.7;
 
 function makeTexture(scene, key, width, height, draw) {
@@ -87,7 +23,7 @@ function makeTexture(scene, key, width, height, draw) {
 
 // Soft outline: ink is laid underneath every see-through edge pixel that touches
 // a solid one (so antialiased edges get a continuous line, not a dotted one).
-function addOutline(scene, key) {
+export function addOutline(scene, key) {
   const tex = scene.textures.get(key);
   const canvas = tex.getSourceImage();
   if (!(canvas instanceof HTMLCanvasElement)) return;
@@ -115,46 +51,6 @@ function addOutline(scene, key) {
   tex.refresh();
 }
 
-function drawPlayer(g, pose) {
-  const C = PLAYER_COLORS;
-  const crouch = pose === 'crouch';
-  const dy = crouch ? 12 : 0;
-
-  for (const [x, y, w, h] of LEG_POSES[pose]) {
-    g.fillStyle(C.legs).fillRect(x, y, w, h);
-    g.fillStyle(C.shoes).fillRect(x, y + h, w + 2, 2);
-  }
-
-  // Long coat.
-  const coat = crouch
-    ? [[9, 30], [23, 30], [26, 44], [6, 44]]
-    : [[10, 21], [22, 21], [24, 39], [8, 39]];
-  g.fillStyle(C.coat).fillPoints(coat.map(([x, y]) => ({ x, y })), true);
-  g.fillStyle(C.coatDark);
-  g.fillRect(15, coat[0][1] + 1, 1, coat[2][1] - coat[0][1] - 1); // front seam
-  g.fillRect(coat[3][0] + 1, coat[0][1] + 9, coat[1][0] - coat[0][0] + 2, 2); // belt
-  g.fillStyle(C.button);
-  g.fillRect(17, coat[0][1] + 3, 2, 2);
-  g.fillRect(17, coat[0][1] + 13, 2, 2);
-
-  // Arm and hand.
-  g.fillStyle(C.coatDark).fillRect(17, 23 + dy, 4, 10);
-  g.fillStyle(C.skin).fillRect(17, 33 + dy, 4, 2);
-
-  // Scarf with a tail.
-  g.fillStyle(C.scarf).fillRect(10, 19 + dy, 13, 3);
-  g.fillRect(10, 22 + dy, 3, 5);
-
-  // Face.
-  g.fillStyle(C.skin).fillRect(11, 11 + dy, 11, 8);
-  g.fillStyle(C.eye).fillRect(18, 14 + dy, 2, 2);
-
-  // Hat: brim, crown, band.
-  g.fillStyle(C.hat).fillRect(7, 9 + dy, 19, 3);
-  g.fillRect(10, 2 + dy, 13, 8);
-  g.fillStyle(C.hatBand).fillRect(10, 7 + dy, 13, 2);
-}
-
 // Heart in a 22×20 frame, optionally shrunk toward its centre (for inner fills).
 function drawHeart(g, color, scale = 1) {
   const p = (x, y) => [11 + (x - 11) * scale, 10 + (y - 10) * scale];
@@ -174,33 +70,17 @@ export function seededRandom(seed) {
 }
 
 export function createCommonTextures(scene) {
-  for (const pose of Object.keys(LEG_POSES)) {
-    makeTexture(scene, `player-${pose}`, PLAYER_FRAME.width, PLAYER_FRAME.height, (g) => drawPlayer(g, pose));
-  }
+  // Characters are layered and baked per outfit (src/art/Character.js).
+  buildOutfit(scene, HOME_OUTFIT, addOutline);
+  buildPoliceLook(scene, 'plain', addOutline);
 
-  for (const pose of Object.keys(POLICE_LEGS)) {
-    makeTexture(scene, `police-${pose}`, POLICE_FRAME.width, POLICE_FRAME.height, (g) => drawPolice(g, pose));
-  }
-
-  // On skis (Winter): skis under the feet with upturned tips, and a pole.
-  const skis = (g, y, pole) => {
-    g.fillStyle(0x2f6fd8).fillRect(0, y, 32, 2);
-    g.fillRect(30, y - 2, 2, 2);
-    g.lineStyle(1, 0x3b2a20).lineBetween(pole[0], pole[1], pole[2], pole[3]);
-  };
-  makeTexture(scene, 'player-ski', PLAYER_FRAME.width, PLAYER_FRAME.height, (g) => {
-    drawPlayer(g, 'idle');
-    skis(g, 46, [18, 32, 8, 46]);
+  // Summer outfit puff, Spring rain.
+  makeTexture(scene, 'sparkle', 10, 10, (g) => {
+    g.fillStyle(0xfff27a).fillTriangle(5, 0, 6.5, 5, 3.5, 5).fillTriangle(5, 10, 6.5, 5, 3.5, 5);
+    g.fillTriangle(0, 5, 5, 3.5, 5, 6.5).fillTriangle(10, 5, 5, 3.5, 5, 6.5);
   });
-  makeTexture(scene, 'player-ski-air', PLAYER_FRAME.width, PLAYER_FRAME.height, (g) => {
-    drawPlayer(g, 'jump');
-    skis(g, 45, [18, 30, 4, 40]);
-  });
-  makeTexture(scene, 'police-ski', POLICE_FRAME.width, POLICE_FRAME.height, (g) => {
-    drawPolice(g, 'idle');
-    g.fillStyle(0xd94f4a).fillRect(0, 48, 32, 2);
-    g.fillRect(30, 46, 2, 2);
-    g.lineStyle(1, 0x2a2a2e).lineBetween(18, 30, 8, 48);
+  makeTexture(scene, 'raindrop', 3, 12, (g) => {
+    g.fillStyle(0xcfe6ff, 0.9).fillRect(1, 0, 1, 12);
   });
 
   // Winter: snowflakes, boot prints, and a soft brush that cuts the blizzard fog.
@@ -373,23 +253,6 @@ export function createCommonTextures(scene) {
     g.fillStyle(0xffe58a).fillCircle(8.5, 8, 3);
     g.fillStyle(0xb7811c).fillRect(10, 6, 2, 10);
   });
-
-  if (!scene.anims.exists('player-walk')) {
-    scene.anims.create({
-      key: 'player-walk',
-      frames: [{ key: 'player-walk1' }, { key: 'player-idle' }, { key: 'player-walk2' }, { key: 'player-idle' }],
-      frameRate: 10,
-      repeat: -1,
-    });
-  }
-  if (!scene.anims.exists('police-walk')) {
-    scene.anims.create({
-      key: 'police-walk',
-      frames: [{ key: 'police-walk1' }, { key: 'police-idle' }, { key: 'police-walk2' }, { key: 'police-idle' }],
-      frameRate: 6,
-      repeat: -1,
-    });
-  }
 }
 
 // Hiding-spot textures by kind, drawn from the season palette.

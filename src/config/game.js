@@ -35,6 +35,9 @@ export const PLAYER = {
   maxFallSpeed: 760,
   crouchSpeedMultiplier: 0.35,
   walkAnimThreshold: 25, // px/s
+  walkFrameMs: 100, // run cycle speed (every clothing layer follows the same frames)
+  fallPoseSpeed: 160, // falling faster than this shows the falling pose
+  umbrellaFallSpeed: 85, // max fall speed with the umbrella open (Spring outfit)
   movingThreshold: 30, // below this speed the player counts as standing still (heat)
   body: { width: 16, height: 38, crouchHeight: 24 },
   // Swimming in water marked swim: true. Season `swim` config sets speeds and breath.

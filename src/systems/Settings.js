@@ -16,12 +16,13 @@ export const DEFAULT_CONTROLS = {
   right: ['RIGHT', 'D'],
   jump: ['SPACE', 'UP', 'W'],
   hide: ['DOWN', 'S'],
+  glide: ['UP', 'W'], // umbrella (Spring outfit): hold in the air
 };
 
 // Keys that menus need; they can't be bound to actions.
 export const RESERVED_KEYS = ['ESC', 'P', 'M', 'ENTER'];
 
-export const ACTION_LABELS = { left: 'Move left', right: 'Move right', jump: 'Jump', hide: 'Hide / duck / dive' };
+export const ACTION_LABELS = { left: 'Move left', right: 'Move right', jump: 'Jump', hide: 'Hide / duck / dive', glide: 'Umbrella (hold in air)' };
 
 const events = new Phaser.Events.EventEmitter();
 

@@ -23,6 +23,9 @@ import Hud, { textStyle } from '../ui/Hud.js';
 import PauseMenu from '../ui/PauseMenu.js';
 import Settings from '../systems/Settings.js';
 import { applyEffects } from '../systems/Effects.js';
+import { resolveOutfit, equippedId } from '../systems/Wardrobe.js';
+import ColdSystem from '../systems/ColdSystem.js';
+import WeatherSystem from '../systems/WeatherSystem.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
 // One shared engine for every season. The season config + layout decide
@@ -42,9 +45,14 @@ export default class GameScene extends Phaser.Scene {
     const perked = PerkSystem.apply(tuned, data.perks);
     const shopped = ShopSystem.apply(perked, data.items, data.hidingPlaces);
     // Easy mode (Settings): police take longer to spot you.
-    this.season = Settings.current.easy
+    const eased = Settings.current.easy
       ? applyEffects(shopped, [{ path: 'police.detectionTime', mul: EASY.detectionMultiplier }])
       : shopped;
+    // Seasonal outfit (default or bought in the shop): its effects change the rules
+    // (e.g. faster in Summer, slower but warmer in Winter, camouflage bonus).
+    this.outfitId = eased.wardrobe ? equippedId(SaveSystem.load(), eased.key) : null;
+    this.outfit = eased.wardrobe ? resolveOutfit(eased, this.outfitId) : null;
+    this.season = this.outfit ? applyEffects(eased, this.outfit.effects) : eased;
     this.player = null;
     if (!this.season.layout) {
       this.createPlaceholder();
@@ -54,7 +62,8 @@ export default class GameScene extends Phaser.Scene {
     const { layout, physics } = this.season;
     this.events.once('shutdown', () => this.events
         .off('player-enter-water').off('player-dive').off('player-out-of-breath').off('player-launch')
-        .off('player-jump').off('player-hide').off('police-suspect').off('police-alarm'));
+        .off('player-jump').off('player-hide').off('police-suspect').off('police-alarm')
+        .off('player-umbrella').off('rain-start').off('rain-stop'));
     const { width: W, height: H } = this.scale;
     this.state = 'playing';
     this.lives = new LivesSystem(data.lives);
@@ -70,6 +79,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.movers = this.level.movers;
     this.player = new Player(this, layout.spawn.x, layout.spawn.y, this.season);
+    if (this.outfit) this.player.setOutfit(this.outfit);
     this.physics.add.collider(this.player, this.level.solids);
     this.physics.add.collider(this.player, this.movers.flatMap((m) => m.zones));
     this.physics.add.overlap(this.player, this.level.obstacles, () =>
@@ -98,6 +108,19 @@ export default class GameScene extends Phaser.Scene {
     );
 
     this.heat = new HeatSystem(this, layout.heatZones, this.season.heat, layout.groundY);
+    this.cold = new ColdSystem(layout.coldZones, layout.warmSpots, this.season.cold);
+    this.weather = new WeatherSystem(this, this.season.weather);
+    // Fall outfit: blend into foliage (trees and leaf piles).
+    this.foliageXs = [...(layout.trees ?? []), ...(layout.leafPiles ?? []).map((p) => p.x)];
+    this.outfitPuff = this.add.particles(0, 0, this.season.wardrobe?.puff?.texture ?? 'puff', {
+      speed: { min: 60, max: 160 },
+      lifespan: 700,
+      scale: { start: 1.2, end: 0.4 },
+      alpha: { start: 1, end: 0 },
+      rotate: { min: 0, max: 360 },
+      tint: this.season.wardrobe?.puff?.tint ?? 0xffffff,
+      emitting: false,
+    }).setDepth(DEPTH.popup);
     this.crossings = new CrossingSystem(this, layout.crossings, layout.groundY, this.season.palette, this.audio, this.season.hurdleTiming);
     this.leaves = new LeafSystem(this, layout.leafPiles, this.season.wind, layout.groundY, this.season.palette, this.audio);
     this.hidingSpots.push(...this.leaves.hidingSpots);
@@ -151,6 +174,7 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('player-launch', () => this.audio.play('launch'));
     this.events.on('player-jump', () => this.audio.play('jump'));
     this.events.on('player-hide', () => this.audio.play('hide'));
+    this.events.on('player-umbrella', () => this.audio.play('umbrella'));
     this.events.on('police-suspect', () => this.audio.play('suspect'));
     this.events.on('police-alarm', () => this.audio.play('alert'));
     this.audio.playMusic(this.season.music ?? this.season.key);
@@ -182,6 +206,7 @@ export default class GameScene extends Phaser.Scene {
     const used = (action) => this.fadeKeyHints(action);
     this.events.on('player-jump', () => used('jump'));
     this.events.on('player-hide', () => used('hide'));
+    this.events.on('player-umbrella', () => used('glide'));
     this.events.on('player-out-of-breath', (p) => {
       this.audio.play('gasp');
       this.hud.popup(p.x, p.y - 40, 'Out of breath!', '#bfeaff');
@@ -279,13 +304,16 @@ export default class GameScene extends Phaser.Scene {
     const clues = this.footprints.clues();
     const baseVisibility = this.season.visibility ?? 1;
     const catcher = this.police.find((officer) => {
-      officer.visibility = baseVisibility * this.blizzard.visibilityAt(officer.x);
+      officer.visibility = baseVisibility * this.blizzard.visibilityAt(officer.x) * this.weather.visibility;
       return officer.update(time, delta, player, playing, blockers, clues);
     });
     const heat = playing ? this.heat.update(dt, player, Boolean(spot)) : null;
+    const cold = playing ? this.cold.update(dt, player, Boolean(spot)) : null;
+    this.weather.update(time);
     this.meters.update(player, [
       { kind: 'stamina', value: this.heat.stamina, show: this.heat.active && (this.heat.stamina < 1 || this.heat.standingInSun) },
       { kind: 'breath', value: player.breath, show: player.swimming || player.breath < 1 },
+      { kind: 'cold', value: this.cold.warmth, show: this.cold.active && (this.cold.warmth < 1 || this.cold.inCold) },
     ]);
     if (!playing) return;
 
@@ -293,13 +321,20 @@ export default class GameScene extends Phaser.Scene {
       s.setPrompt(s === spot && !player.hidden && !player.swimming, player);
       s.setOccupied(s === player.hidingSpot);
     });
-    this.hud.setHidden(player.hidden);
+    // Fall outfit: in front of trees or leaf piles, police notice you more slowly.
+    const foliage = this.outfit?.foliage;
+    const blending = Boolean(foliage) && !player.hidden && this.foliageXs.some((x) => Math.abs(player.x - x) <= foliage.range);
+    player.detectionScale = blending ? foliage.detectionRate : 1;
+    this.hud.setHidden(player.hidden, blending ? 'BLENDING IN' : null);
 
+    if (cold === 'warn') this.hud.popup(player.x, player.y - 56, 'Freezing! Find shelter', '#cfe9ff');
     if (heat === 'warn') {
       this.hud.popup(player.x, player.y - 56, 'Too hot! Find shade', '#ffd27a');
     }
     if (trainHit) {
       this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'bonk', message: 'Too close!', banner: 'Watch the signals!', reason: 'train' });
+    } else if (cold === 'freeze') {
+      this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'faint', message: 'Too cold!', banner: 'Frozen!', reason: 'cold' });
     } else if (heat === 'faint') {
       this.loseLife({ amount: LIVES.lossOnHurdleFail, sound: 'faint', message: 'Fainted!', banner: 'Too hot!', reason: 'heat' });
     } else if (catcher) {
@@ -354,7 +389,18 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: [g, mini, label], alpha: 0, delay: MAP_SHOW_MS - 800, duration: 800, onComplete: () => [g, mini, label].forEach((o) => o.destroy()) });
   }
 
+  // Change outfit in place (hurdle swaps such as Summer's life jacket), with a puff.
+  changeOutfit(swapKey) {
+    if (!this.outfit) return;
+    const outfit = resolveOutfit(this.season, this.outfitId, swapKey);
+    if (outfit.id === this.player.outfit?.id) return;
+    this.player.setOutfit(outfit);
+    this.outfitPuff.explode(18, this.player.x, this.player.y - 6);
+    this.audio.play('outfit');
+  }
+
   startHurdle(i, hurdle) {
+    if (this.season.wardrobe?.swaps?.[hurdle.key]) this.changeOutfit(hurdle.key);
     this.hud.setHurdle(i);
     this.hud.showBanner(`Hurdle ${i + 1}: ${hurdle.name}`, hurdle.hint ?? '');
   }
@@ -369,6 +415,7 @@ export default class GameScene extends Phaser.Scene {
     });
     this.hud.markCleared(i + 1);
     this.hud.popup(this.player.x, this.player.y - 40, '+½ life');
+    if (this.season.wardrobe?.swaps?.[hurdle.key]) this.changeOutfit(null); // back to the season outfit
     const next = this.level.hurdles[i + 1];
     this.hud.setBetweenHurdles(next ? `${hurdle.name} cleared!` : 'Head for the exit →');
   }
@@ -385,7 +432,9 @@ export default class GameScene extends Phaser.Scene {
     this.hud.breakHeart(before, after);
     this.audio.play(sound);
     this.player.freeze();
-    this.player.setVisible(false);
+    // Caught: hands up where the officer saw you. Other failures: gone (fell, splashed).
+    if (reason === 'caught') this.player.showCaught();
+    else this.player.setVisible(false);
     this.shake(200, 0.006);
     this.cameras.main.flash(250, 255, 170, 170);
 
@@ -406,6 +455,7 @@ export default class GameScene extends Phaser.Scene {
       this.police.forEach((officer) => officer.reset());
       this.movers.forEach((m) => m.reset());
       this.heat.reset();
+      this.cold.reset();
       this.slopes.reset();
       this.footprints.reset();
       this.player.skiing = false;

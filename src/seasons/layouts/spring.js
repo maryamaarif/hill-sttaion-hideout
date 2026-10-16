@@ -72,6 +72,7 @@ export default {
     { x: 120, y: groundY - 70, actions: ['left', 'right'] },
     { x: 328, y: groundY - 74, actions: ['jump'] },
     { x: 640, y: groundY - 100, actions: ['hide'] },
+    { x: 2585, y: groundY - 110, actions: ['glide'] }, // umbrella over the stream
   ],
 
   trees: [140, 480, 980, 1240, 1860, 2240, 3210, 3370, 4810, 5170],

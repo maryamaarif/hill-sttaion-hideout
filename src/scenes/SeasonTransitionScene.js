@@ -3,6 +3,10 @@ import { SEASON_ORDER } from '../seasons/index.js';
 import { TRANSITION, UI } from '../config/game.js';
 import AudioSystem from '../systems/AudioSystem.js';
 import PerkSystem from '../systems/PerkSystem.js';
+import SaveSystem from '../systems/SaveSystem.js';
+import { resolveOutfit, equippedId } from '../systems/Wardrobe.js';
+import { buildOutfit } from '../art/Character.js';
+import { addOutline } from '../art/TextureFactory.js';
 
 const { Color } = Phaser.Display;
 const mix = (a, b, t) => {
@@ -53,6 +57,8 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     this.tweens.add({ targets: prevIcon, scale: 0, angle: 180, alpha: 0, delay: T.swapMs - 200, duration: 400 });
     this.tweens.add({ targets: nextIcon, scale: 3, delay: T.swapMs + 200, duration: 500, ease: 'Back.out' });
 
+    this.outfitChange(T);
+
     // Season name, then lives carried forward.
     const title = this.add.text(W / 2, H / 2 - 52, this.next.name, textStyle(48)).setOrigin(0.5).setAlpha(0);
     const tagline = this.add.text(W / 2, H / 2 - 14, this.next.tagline, textStyle(18, { color: '#f4f1ea' })).setOrigin(0.5).setAlpha(0);
@@ -83,6 +89,52 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     kb.on('keydown-SPACE', () => this.confirm());
   }
 
+  // The guest changes clothes: a spin with a puff of the new season's particles,
+  // the old season's outfit replaced by the new one (whatever is equipped).
+  outfitChange(T) {
+    const { height: H } = this.scale;
+    const save = SaveSystem.load();
+    const before = resolveOutfit(this.prev, equippedId(save, this.prev.key));
+    const after = resolveOutfit(this.next, equippedId(save, this.next.key));
+    buildOutfit(this, before, addOutline);
+    buildOutfit(this, after, addOutline);
+    const x = 140;
+    const y = H / 2 + 76;
+    const guest = this.add.image(x, y, `pl-${before.id}-idle`).setOrigin(0.5, 1).setScale(3);
+    const puff = (season) =>
+      this.add.particles(x, y - 80, season.wardrobe?.puff?.texture ?? 'puff', {
+        speed: { min: 80, max: 220 },
+        lifespan: 900,
+        scale: { start: 1.8, end: 0.5 },
+        alpha: { start: 1, end: 0 },
+        rotate: { min: 0, max: 360 },
+        tint: season.wardrobe?.puff?.tint ?? 0xffffff,
+        emitting: false,
+      });
+    const blurb = this.add
+      .text(x, y + 14, `${after.name}\n${after.blurb ?? ''}`, textStyle(14, { color: '#fff6e8', wordWrap: { width: 230 } }))
+      .setOrigin(0.5, 0)
+      .setAlpha(0);
+    this.time.delayedCall(T.swapMs, () => {
+      this.audio.play('outfit');
+      // Half a turn: squeeze to nothing, swap clothes, open out mirrored, turn back.
+      this.tweens.chain({
+        targets: guest,
+        tweens: [
+          { scaleX: 0, duration: 120, ease: 'Sine.in', onComplete: () => {
+            guest.setTexture(`pl-${after.id}-idle`);
+            puff(this.next).explode(36);
+          } },
+          { scaleX: -3, duration: 120, ease: 'Sine.out' },
+          { scaleX: 0, duration: 110, ease: 'Sine.in' },
+          { scaleX: 3, duration: 110, ease: 'Sine.out' },
+        ],
+      });
+      this.tweens.add({ targets: blurb, alpha: 1, delay: 500, duration: 400 });
+    });
+    this.outfitObjects = [guest, blurb];
+  }
+
   drawBackground() {
     const { width: W, height: H } = this.scale;
     const t = this.blend.t;
@@ -105,6 +157,7 @@ export default class SeasonTransitionScene extends Phaser.Scene {
     this.blend.t = 1;
     this.drawBackground();
     this.texts.forEach((o) => o.setAlpha(1));
+    this.outfitObjects?.[1]?.setAlpha(1);
     this.hearts.forEach((h, i) => h.setAlpha(this.heartAlpha[i]));
 
     const { width: W, height: H } = this.scale;

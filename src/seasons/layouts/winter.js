@@ -44,6 +44,10 @@ export default {
   ],
 
   blizzardZones: [{ x: 3500, w: 1900 }],
+  // Cold meter drains out in the open here; huts (hiding spots) and the guest
+  // house's warm windows refill it.
+  coldZones: [{ x: 3440, w: 2000 }],
+  warmSpots: [{ x: 5650, r: 220 }],
   footprintZones: [{ x: 3440, w: 2000 }],
 
   hidingSpots: [

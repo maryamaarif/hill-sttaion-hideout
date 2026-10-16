@@ -180,8 +180,10 @@ export default class Hud {
 
   // ----- misc -----
 
-  setHidden(hidden) {
-    this.hiddenText.setVisible(hidden);
+  // Status under the hearts: HIDDEN, or e.g. BLENDING IN (Fall foliage).
+  setHidden(hidden, label = null) {
+    this.hiddenText.setVisible(hidden || Boolean(label));
+    this.hiddenText.setText(hidden ? 'HIDDEN' : label ?? '');
   }
 
   showBanner(title, sub = '') {

@@ -13,7 +13,40 @@ export default {
   layout,
   physics: { gravity: 1250, runSpeed: 220, jumpVelocity: 530, friction: 1.0 },
   visibility: 1.0,
-  police: { patrolSpeed: 62, visionLength: 200, visionAngleDeg: 40, detectionTime: 1.7, pauseMs: 1300 },
+  police: {
+    patrolSpeed: 62, visionLength: 200, visionAngleDeg: 40, detectionTime: 1.7, pauseMs: 1300,
+    disguise: 'passenger', // train passengers with newspapers
+  },
+  wardrobe: {
+    // Earthy colours blend into autumn foliage: police notice you more slowly in
+    // front of trees and leaf piles.
+    outfit: {
+      id: 'fall',
+      name: 'Knit sweater & corduroy',
+      blurb: 'Earthy colours: blend in by autumn trees',
+      ability: 'foliage',
+      foliage: { range: 70, detectionRate: 0.8 },
+      layers: {
+        top: { style: 'sweater', color: 0xb5532a, trim: 0xf2b234 },
+        bottom: { style: 'corduroy', color: 0x6e4a2a },
+        shoes: { style: 'ankleBoots', color: 0x3a2416 },
+        hat: null,
+        accessories: [{ style: 'scarf', color: 0xd9a441 }],
+      },
+    },
+    variants: [
+      { id: 'fall-plum', name: 'Plum sweater', cost: 80, layers: { top: { color: 0x7a3a5a, trim: 0xe8a868 }, accessories: [{ style: 'scarf', color: 0xe8692a }] } },
+      {
+        id: 'fall-camo',
+        name: 'Leaf camouflage',
+        camo: true,
+        cost: 150,
+        layers: { top: { color: 0xd9782a, trim: 0x9e2f1a }, bottom: { color: 0x8a5a2b }, accessories: [{ style: 'scarf', color: 0xc8401e }] },
+        effects: [{ path: 'police.detectionTime', mul: 1.12 }],
+      },
+    ],
+    puff: { texture: 'leaf', tint: [0xe8692a, 0xc8401e, 0xf2b234, 0xd98a2b] },
+  },
   wind: { intervalMs: 5200, warnMs: 900, gustMs: 1300, firstGustMs: 1800 },
   hidingSpots: ['crates'],
   hurdles: [

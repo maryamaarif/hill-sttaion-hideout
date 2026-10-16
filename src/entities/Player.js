@@ -1,5 +1,8 @@
 import { PLAYER, DEPTH, RESPAWN } from '../config/game.js';
-import { PLAYER_FRAME } from '../art/TextureFactory.js';
+import { CHAR_FRAME, buildOutfit } from '../art/Character.js';
+import { addOutline } from '../art/TextureFactory.js';
+
+const WALK_CYCLE = ['walk1', 'idle', 'walk2', 'idle'];
 import Settings from '../systems/Settings.js';
 
 const moveTowards = (value, target, maxDelta) =>
@@ -21,7 +24,7 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 // SlopeSystem sets slopeGrounded when the player stands on a slope.
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, season) {
-    super(scene, x, y, 'player-idle');
+    super(scene, x, y, 'pl-home-idle');
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -81,7 +84,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const { width, height, crouchHeight } = PLAYER.body;
     const h = standing ? height : crouchHeight;
     this.body.setSize(width, h);
-    this.body.setOffset((PLAYER_FRAME.width - width) / 2, PLAYER_FRAME.height - h);
+    this.body.setOffset((CHAR_FRAME.width - width) / 2, CHAR_FRAME.height - h);
   }
 
   get onGround() {
@@ -172,6 +175,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
 
+    this.updateUmbrella(grounded);
+
     // Horizontal: accelerate toward target speed. Season friction scales grip.
     const maxSpeed = this.seasonPhysics.runSpeed * (this.crouching ? PLAYER.crouchSpeedMultiplier : 1);
     const grip = grounded ? (this.seasonPhysics.friction ?? 1) : PLAYER.airControl;
@@ -188,11 +193,30 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   updatePose(grounded) {
     let pose;
-    if (this.crouching) pose = 'player-crouch';
-    else if (!grounded) pose = 'player-jump';
+    if (this.crouching) pose = 'crouch';
+    else if (this.umbrellaOpen) pose = 'glide';
+    else if (!grounded) pose = this.body.velocity.y > PLAYER.fallPoseSpeed ? 'fall' : 'jump';
     else if (Math.abs(this.body.velocity.x) > PLAYER.walkAnimThreshold) pose = 'walk';
-    else pose = 'player-idle';
+    else pose = 'idle';
     this.showPose(pose);
+  }
+
+  // ----- outfit -----
+
+  // Wear an outfit (see systems/Wardrobe.js): every pose texture comes from it.
+  setOutfit(outfit) {
+    buildOutfit(this.scene, outfit, addOutline);
+    this.outfit = outfit;
+    this.texPrefix = `pl-${outfit.id}`;
+    this.setTexture(`${this.texPrefix}-${this.currentPose ?? 'idle'}`);
+  }
+
+  // Umbrella (Spring outfit): hold the glide key while falling to float down.
+  updateUmbrella(grounded) {
+    const open = this.outfit?.ability === 'umbrella' && !grounded && !this.swimming && this.isDown('glide') && this.body.velocity.y > 0;
+    if (open && !this.umbrellaOpen) this.scene.events.emit('player-umbrella', this);
+    this.umbrellaOpen = open;
+    if (open) this.setVelocityY(Math.min(this.body.velocity.y, PLAYER.umbrellaFallSpeed));
   }
 
   // ----- skiing -----
@@ -210,8 +234,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.gliding = this.launched && !grounded && jumpHeld;
     this.body.setGravityY(this.gliding ? -this.worldGravity * (1 - cfg.glideGravity) : 0);
 
-    this.anims.stop();
-    this.setTexture(grounded ? (this.crouching ? 'player-crouch' : 'player-ski') : 'player-ski-air');
+    this.showPose(grounded ? (this.crouching ? 'crouch' : 'ski') : 'skiAir');
   }
 
   // Thrown into the air off a ski-jump ramp.
@@ -223,13 +246,16 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.events.emit('player-launch', this);
   }
 
+  // Poses are textures of the current outfit; the run cycle steps through frames.
   showPose(pose) {
-    if (pose === 'walk') {
-      this.anims.play('player-walk', true);
-    } else {
-      this.anims.stop();
-      this.setTexture(pose);
-    }
+    const frame = pose === 'walk' ? WALK_CYCLE[Math.floor(this.scene.time.now / PLAYER.walkFrameMs) % WALK_CYCLE.length] : pose;
+    this.currentPose = frame;
+    this.setTexture(`${this.texPrefix ?? 'pl-home'}-${frame}`);
+  }
+
+  // Hands up: shown while being caught.
+  showCaught() {
+    this.showPose('caught');
   }
 
   // ----- swimming -----
@@ -292,7 +318,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.diving) this.setAlpha(0.75).setTint(0x7fb6e6);
     else this.setAlpha(1).clearTint();
 
-    this.showPose(dir !== 0 ? 'walk' : 'player-idle');
+    this.showPose(dir !== 0 ? 'walk' : 'idle');
 
     // Jump out of the water (onto a bank or jetty) from the surface.
     if (jumpPressed && !this.diving && this.body.bottom <= floatBottom + 8) {
@@ -327,8 +353,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.crouching = true;
     this.setStandingBody(false);
     this.setVelocityX(0);
-    this.anims.stop();
-    this.setTexture('player-crouch');
+    this.showPose('crouch');
     this.setAlpha(0.6).setTint(0x8a96a8);
     this.scene.events.emit('player-hide', this);
     if (spot.tuck) this.scene.tweens.add({ targets: this, x: spot.x, duration: 140, ease: 'Sine.out' });

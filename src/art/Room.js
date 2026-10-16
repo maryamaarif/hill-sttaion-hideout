@@ -160,6 +160,7 @@ export function drawRoom(scene, area, owned) {
   if (has('fireplace')) c.add(scene.add.rectangle(X, Y, W, H, 0xffa040, 0.07).setOrigin(0));
 
   // The player, at home.
-  c.add(scene.add.image(X + W * 0.3, floorY + 64, 'player-idle').setOrigin(0.5, 1).setScale(2.2));
+  c.guest = scene.add.image(X + W * 0.3, floorY + 64, 'pl-home-idle').setOrigin(0.5, 1).setScale(2.2);
+  c.add(c.guest);
   return c;
 }

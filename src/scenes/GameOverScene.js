@@ -10,6 +10,7 @@ const MESSAGES = {
   heat: 'The summer sun got the better of you.',
   branch: 'One branch too many knocked you off.',
   train: 'The trains ran on time. You did not.',
+  cold: 'The cold got to you. Huts and warm windows help.',
 };
 
 export default class GameOverScene extends Phaser.Scene {
