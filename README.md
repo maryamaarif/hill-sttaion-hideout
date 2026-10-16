@@ -33,7 +33,8 @@ Then open <http://localhost:8000>.
 - **Fall** is a full stage: ride a vintage steam train (duck under bridges, hide between carriages), time three level crossings, and cross a leaf path where the wind reveals hidden holes.
 - **Winter** is a full stage: ski down the mountain past police skiers, fly the ski jump, then cross a blizzard where your footprints give you away, to reach the guest house.
 - Between seasons you see how many lives you carry forward and pick one perk for the next season (e.g. *Warm coat: less slip in Winter*).
-- Finishing Winter completes the level: lives turn into coins, then you return to your room. Level 2 and beyond are noticeably harder.
+- Finishing Winter completes the level: lives turn into coins, then you return to your room. Spend coins on room upgrades (the room changes), items for the next level, and extra hiding places in the seasons. Press **N** in your room to start the next level, which is noticeably harder.
+- Progress is saved in your browser (localStorage). If storage is blocked, the game still works for the session.
 - Every screen shows which key continues.
 
 ## Deploy to GitHub Pages

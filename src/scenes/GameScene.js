@@ -8,6 +8,8 @@ import LivesSystem from '../systems/LivesSystem.js';
 import DifficultySystem from '../systems/DifficultySystem.js';
 import AudioSystem from '../systems/AudioSystem.js';
 import PerkSystem from '../systems/PerkSystem.js';
+import ShopSystem from '../systems/ShopSystem.js';
+import { MAP_SHOW_MS } from '../config/shop.js';
 import SaveSystem from '../systems/SaveSystem.js';
 import Player from '../entities/Player.js';
 import Police from '../entities/Police.js';
@@ -17,7 +19,7 @@ import LeafSystem from '../systems/LeafSystem.js';
 import SlopeSystem from '../systems/SlopeSystem.js';
 import BlizzardSystem from '../systems/BlizzardSystem.js';
 import FootprintSystem from '../systems/FootprintSystem.js';
-import Hud from '../ui/Hud.js';
+import Hud, { textStyle } from '../ui/Hud.js';
 import PlayerMeters from '../ui/PlayerMeters.js';
 
 // One shared engine for every season. The season config + layout decide
@@ -31,9 +33,11 @@ export default class GameScene extends Phaser.Scene {
   create(data) {
     this.run = data;
     // Season config tuned for the level (breath, stamina, movers, crossings), then
-    // the perk chosen on the transition screen.
+    // the perk chosen on the transition screen, then shop items and unlocked
+    // hiding places.
     const tuned = DifficultySystem.tuneSeason(SEASON_ORDER[data.seasonIndex], data.level);
-    this.season = PerkSystem.apply(tuned, data.perks);
+    const perked = PerkSystem.apply(tuned, data.perks);
+    this.season = ShopSystem.apply(perked, data.items, data.hidingPlaces);
     this.player = null;
     if (!this.season.layout) {
       this.createPlaceholder();
@@ -97,7 +101,8 @@ export default class GameScene extends Phaser.Scene {
     this.hud = new Hud(this, this.season, this.level.hurdles, SaveSystem.load().coins);
     this.hud.setLives(this.lives.lives);
     const perk = PerkSystem.activeFor(this.season.key, data.perks)[0];
-    if (perk) this.hud.setPerk(`${perk.icon} ${perk.name}`);
+    const itemIcons = ShopSystem.items(data.items).map((i) => i.icon).join(' ');
+    this.hud.setPerk([perk ? `${perk.icon} ${perk.name}` : '', itemIcons].filter(Boolean).join('   '));
     this.hud.setBetweenHurdles(this.season.tagline);
 
     this.hurdles = new HurdleSystem(this, this.level.hurdles, this.player, {
@@ -146,6 +151,7 @@ export default class GameScene extends Phaser.Scene {
     cam.fadeIn(400);
 
     this.hud.showBanner(this.season.name, `Reach the ${layout.goal.label}. Stay out of sight.`);
+    if (ShopSystem.hasMap(data.items)) this.showPoliceRoutes();
   }
 
   update(time, delta) {
@@ -222,6 +228,51 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // Map item: every officer's patrol route drawn for a few seconds.
+  showPoliceRoutes() {
+    const g = this.add.graphics().setDepth(DEPTH.popup);
+    const groundAt = this.level.groundAt;
+    for (const officer of this.police) {
+      const { from, to, y } = officer.route;
+      const ry = (x) => (y ?? groundAt(x)) - 70;
+      g.lineStyle(4, 0xd94f4a, 0.9);
+      if (from === to) {
+        g.strokeCircle(from, ry(from), 14);
+      } else {
+        for (let x = from; x < to; x += 24) g.lineBetween(x, ry(x), Math.min(to, x + 14), ry(Math.min(to, x + 14)));
+        g.fillStyle(0xd94f4a).fillTriangle(from - 10, ry(from), from + 2, ry(from) - 8, from + 2, ry(from) + 8);
+        g.fillTriangle(to + 10, ry(to), to - 2, ry(to) - 8, to - 2, ry(to) + 8);
+      }
+    }
+
+    // Minimap across the top: the whole season at a glance (officers start off screen).
+    const W = this.scale.width;
+    const mapW = 640;
+    const mx = (W - mapW) / 2;
+    const my = 252; // below the season banner
+    const sx = (x) => mx + (x / this.season.layout.width) * mapW;
+    const mini = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.hud);
+    mini.fillStyle(0xfff4e6, 0.92).fillRoundedRect(mx - 10, my - 16, mapW + 20, 40, 8);
+    mini.lineStyle(3, 0x3b2a20).strokeRoundedRect(mx - 10, my - 16, mapW + 20, 40, 8);
+    mini.fillStyle(0x82c86f).fillRect(mx, my + 10, mapW, 4); // the path
+    for (const h of this.level.hurdles) mini.fillStyle(0x3b2a20, 0.4).fillRect(sx(h.startX), my - 8, 2, 22);
+    for (const spot of this.hidingSpots) mini.fillStyle(0x2f8a3a).fillCircle(sx(spot.x), my + 12, 4);
+    for (const officer of this.police) {
+      const { from, to } = officer.route;
+      mini.fillStyle(0xd94f4a);
+      if (from === to) mini.fillCircle(sx(from), my + 2, 5);
+      else mini.fillRect(sx(from), my, Math.max(4, sx(to) - sx(from)), 5);
+    }
+    mini.fillStyle(0xd9a441).fillTriangle(sx(this.season.layout.goal.x), my - 10, sx(this.season.layout.goal.x) + 10, my - 5, sx(this.season.layout.goal.x), my);
+    mini.fillStyle(0x34506e).fillCircle(sx(this.player.x), my + 12, 6);
+    const label = this.add
+      .text(W / 2, my - 30, '🗺️ Map: police routes (red), hiding spots (green)', textStyle(14))
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH.hud);
+    this.tweens.add({ targets: [g, mini, label], alpha: 0, delay: MAP_SHOW_MS - 800, duration: 800, onComplete: () => [g, mini, label].forEach((o) => o.destroy()) });
+  }
+
   startHurdle(i, hurdle) {
     this.hud.setHurdle(i);
     this.hud.showBanner(`Hurdle ${i + 1}: ${hurdle.name}`, hurdle.hint ?? '');
@@ -260,7 +311,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.lives.isGameOver()) {
       this.time.delayedCall(250, () => this.audio.play('gameOver'));
       this.cameras.main.fadeOut(900);
-      this.time.delayedCall(1000, () => this.scene.start('GameOverScene', { level: this.run.level, reason }));
+      const { level, items, hidingPlaces } = this.run;
+      this.time.delayedCall(1000, () => this.scene.start('GameOverScene', { level, reason, items, hidingPlaces }));
       return;
     }
 

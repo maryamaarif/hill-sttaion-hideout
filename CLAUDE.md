@@ -108,8 +108,15 @@ Player meters (stamina and breath) float above the player's head only while they
 - Completing all 4 seasons finishes one level.
 - At level end, remaining lives are redeemed for coins: **100 coins per full life, 50 per half life**, plus a small **speed bonus**.
 
-### Guest house hub
-Between levels the player returns to their room at the guest house and spends coins on room upgrades, items, and unlocking extra hiding places in the levels.
+### Guest house hub (`HubScene`)
+Between levels the player returns to their room. The room (`src/art/Room.js`) is drawn from the upgrades owned and visibly changes with each: bare bed → patchwork quilt, nail on the wall → Four Seasons painting, frosted glass → curtains and a view, cold hearth → lit fire, plus rug and plants; the light warms as upgrades are added.
+- **Shop** (data in `src/config/shop.js`), three tabs:
+  1. *Room upgrades*: cosmetic progress.
+  2. *Items* for the next level only (used up when it starts; kept on "Try again"): Disguise hat (slower detection), Running shoes (faster), Thermos (stamina and breath last longer), Map (a minimap of police routes and hiding spots for a few seconds at each season start). Item effects use the same dotted-path effects as perks (`src/systems/Effects.js`), applied by `ShopSystem`.
+  3. *Hiding places*: permanent unlocks that add a hiding spot to one season's layout (garden shed, lakeside hut, hollow tree, ice cave).
+- **Keys**: ← → tabs, ↑ ↓ choose, ENTER buy, N next level, M menu, S sound. Everything is clickable too.
+- **Next level** starts `highestLevel` with the new difficulty, packed items and unlocked hiding places (`newLevelRunFromSave`).
+- **Save** (`SaveSystem`, localStorage wrapped in try/catch, in-memory fallback if blocked): `coins`, `highestLevel`, `upgrades`, `items`, `hidingPlaces`, `settings { muted }`. The menu starts at the level reached and offers "Your room" once there is progress.
 
 ### Season transitions and perks
 - After a season's goal, `SeasonTransitionScene` plays a 2–3 s animated change: the old season's particles and icon give way to the next season's, the sky and ground blend, then "❤ x 3.5 carried into Summer" with the hearts. ENTER skips the animation. Timings: `TRANSITION` in `src/config/game.js`.
@@ -148,9 +155,11 @@ src/systems/            LevelBuilder (layout → terrain/hazards/triggers), Hurd
                         LeafSystem (leaf piles, wind gusts), SlopeSystem (slopes, ramps),
                         BlizzardSystem (fog, snow), FootprintSystem (trails police follow),
                         PerkSystem (applies chosen perks to a season config),
+                        ShopSystem (items + unlocked hiding places), Effects (shared),
                         LivesSystem, SaveSystem,
                         AudioSystem, DifficultySystem
-src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax)
+src/art/                TextureFactory (all sprites drawn in code), Backdrop (parallax),
+                        Room (the hub room, drawn from owned upgrades)
 src/ui/                 Hud (hearts, season icon, hurdle dots, coins, banners, reward effects),
                         PlayerMeters (stamina/breath bars above the player)
 src/systems/RunState.js newLevelRun(): the run data passed between scenes
@@ -158,6 +167,7 @@ src/config/game.js      global tunables (lives, coins, player feel, camera, resp
 src/config/levels.js    difficulty numbers per level
 src/config/audio.js     synthesised sound-effect recipes + volume
 src/config/perks.js     season perks offered on the transition screen
+src/config/shop.js      room upgrades, items, hiding places (prices, effects)
 assets/                 images, audio (add when needed)
 ```
 

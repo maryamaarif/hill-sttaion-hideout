@@ -399,6 +399,62 @@ const HIDE_TEXTURES = {
       }
     },
   },
+  // ----- Hiding places unlocked in the shop -----
+  // Potting shed (Spring).
+  shed: {
+    width: 104,
+    height: 92,
+    draw(g, p) {
+      g.fillStyle(p.woodDark).fillRect(10, 30, 84, 62);
+      g.fillStyle(p.wood).fillRect(14, 34, 76, 58);
+      g.fillStyle(p.woodDark);
+      for (let x = 24; x < 90; x += 12) g.fillRect(x, 34, 2, 58);
+      g.fillStyle(0x3a2e24).fillRect(38, 50, 28, 42); // doorway
+      g.fillStyle(p.house.roof).fillPoints([{ x: 0, y: 34 }, { x: 52, y: 4 }, { x: 104, y: 34 }], true);
+      g.fillStyle(p.flowers[0]).fillCircle(20, 88, 6);
+      g.fillStyle(p.flowers[2]).fillCircle(86, 88, 6);
+    },
+  },
+  // Boathouse on the shore (Summer).
+  boathouse: {
+    width: 128,
+    height: 96,
+    draw(g, p) {
+      g.fillStyle(p.woodDark).fillRect(8, 34, 112, 62);
+      g.fillStyle(p.wood).fillRect(12, 38, 104, 58);
+      g.fillStyle(p.woodDark);
+      for (let y = 46; y < 96; y += 10) g.fillRect(12, y, 104, 2);
+      g.fillStyle(0x20303a).fillRoundedRect(36, 52, 56, 44, { tl: 26, tr: 26, bl: 0, br: 0 }); // boat door
+      g.fillStyle(p.house.roof).fillPoints([{ x: 0, y: 38 }, { x: 64, y: 2 }, { x: 128, y: 38 }], true);
+      g.fillStyle(0xffffff).fillRect(54, 20, 20, 8);
+    },
+  },
+  // Hollow oak with a dark opening (Fall).
+  hollowTree: {
+    width: 110,
+    height: 120,
+    draw(g, p) {
+      g.fillStyle(p.trunk).fillRect(30, 40, 50, 80);
+      g.fillStyle(0x2a1a10).fillEllipse(55, 92, 30, 50); // hollow
+      g.fillStyle(p.blossomDark).fillCircle(55, 34, 34);
+      g.fillStyle(p.blossom).fillCircle(32, 40, 24);
+      g.fillCircle(80, 38, 26);
+      g.fillStyle(p.blossomLight).fillCircle(56, 20, 18);
+    },
+  },
+  // Ice cave mouth in a snowbank (Winter).
+  iceCave: {
+    width: 124,
+    height: 84,
+    draw(g, p) {
+      g.fillStyle(p.grassDark).fillEllipse(62, 60, 124, 60);
+      g.fillStyle(0xffffff).fillEllipse(62, 54, 116, 60);
+      g.fillStyle(0x9cc4e4).fillEllipse(62, 70, 58, 46);
+      g.fillStyle(0x3a5a78).fillEllipse(62, 76, 42, 36); // cave mouth
+      g.fillStyle(0xd8f0ff);
+      for (let x = 40; x < 90; x += 10) g.fillTriangle(x, 52, x + 6, 52, x + 3, 64); // icicles
+    },
+  },
   // Stack of old luggage trunks on a station island.
   // Small timber hut buried in snow (Winter blizzard).
   hut: {

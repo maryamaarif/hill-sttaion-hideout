@@ -31,7 +31,12 @@ export default class GameOverScene extends Phaser.Scene {
     hearts.forEach((h) => h.setX(h.x + W / 2 - rowWidth / 2));
 
     createMenu(this, W / 2, H / 2 + 50, [
-      { label: 'Try again', action: () => this.scene.start('GameScene', newLevelRun(data.level, this.time.now)) },
+      // Retrying keeps the items brought from the shop for this level.
+      {
+        label: 'Try again',
+        action: () =>
+          this.scene.start('GameScene', newLevelRun(data.level, this.time.now, { items: data.items, hidingPlaces: data.hidingPlaces })),
+      },
       { label: 'Main menu', action: () => this.scene.start('MenuScene', { level: data.level }) },
     ]);
   }
